@@ -22,7 +22,7 @@ The basic hardware can be put together on a breadboard if you only need it as a 
 
 ![circuit diagram](bkm10rduino.svg)
 
-After that, just upload the arudino sketch, it's been testing on UNO and NANO boards so far, make yourself a cable and enjoy.
+After that, just upload the arudino sketch, it's been tested on UNO and NANO boards so far, make yourself a cable and enjoy.
 
 ###Parts list###
 Arduino UNO, NANO, etc
