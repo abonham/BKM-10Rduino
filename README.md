@@ -1,6 +1,6 @@
 #BKM-10Rduino#
 
-BKM-10Rduino is a Arduino (natch) based alternative for the Sony BKM-10R control unit typically used with Sony broadcast monitors like the BVM-D20F1a/e/u.
+BKM-10Rduino is an Arduino (natch) based alternative for the Sony BKM-10R control unit typically used with Sony broadcast monitors like the BVM-D20F1a/e/u.
 
 ##Why?##
 
