@@ -42,11 +42,11 @@ DB9 | H1
 Pin 1 | GND (pin 6)
 Pin 2 | -TXD (pin 2)
 Pin 3 | +RXD (pin 4 - unused)
-Pin 4 | GND (can be tied to 1)
+Pin 4 | GND
 Pin 5 | +5v (pin 1)
 Pin 6 | GND
 Pin 7 | +TXD (pin 3)
-Pin 8 | -RXD (pin 5)
+Pin 8 | -RXD (pin 5 - unused)
 Pin 9 | GND
 
 
@@ -66,10 +66,10 @@ All you need is the same TTL to RS485 module as above and any cheap three pin IR
 
 DB9 | RS485
 --- | -----
-DB9 Pin 1 | RS485 GND
-DB9 Pin 2 | RS485 B
-DB9 Pin 5 | RS485 VCC
-DB9 Pin 7 | RS485 A
+Pin 1 | GND
+Pin 2 | B
+Pin 5 | VCC
+Pin 7 | A
 
 ![ir cable](ir_cable.jpeg)
 
@@ -81,6 +81,8 @@ pin 8 on the Arduino.
 If you want to power the board from the BVM, take the RS485 VCC to Vin and GND to any ground pin on the Arduino.
 
 ![ir_setup](ir_setup.jpeg)
+
+The minimum keys you'll need are Menu, Enter, Up and Down, but there's also a few more available in the sketch.
 
 ## Thanks
 
