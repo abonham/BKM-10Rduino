@@ -59,7 +59,8 @@ uses far fewer parts and is also lets you control your BVM from across the room!
 
 
 Downside is that you'll need to edit the `constants.h` file with key codes for your specific remote control. There's another sketch called `find_ir_codes` 
-that will just dump the codes to the serial monitor, which you can copy and paste into the constants file.
+that will just dump the codes to the serial monitor, which you can copy and paste into the constants file. Make sure you've installed the 
+[IR library](https://www.arduinolibraries.info/libraries/irmp) in the Arduino IDE
 
 
 All you need is the same TTL to RS485 module as above and any cheap three pin IR sensor. You'll also still need to make a DB9 cable.
