@@ -49,6 +49,31 @@ Pin 9 -> GND
 
 Don't mix up TXD and RXD otherwise you'll spend an afternoon wondering why it doesn't work.
 
+## Less hardware, more software IR version
+
+The BKM10iRduino directory contains an Arduino sketch that allows you to use any kind of spare tv remote you have lying around. This one takes *way* less soldering, 
+uses far fewer parts and is also lets you control your BVM from across the room!
+
+Downside is that you'll need to edit the `constants.h` file with key codes for your specific remote control. There's another sketch called `find_ir_codes` 
+that will just dump the codes to the serial monitor, which you can copy and paste into the constants file.
+
+All you need the the same TTL to RS485 module as above and any cheap three pin IR sensor. You'll also still need to make a DB9 cable.
+
+DB9 Pin 1 -> RS485 GND
+DB9 Pin 2 -> RS485 B
+DB9 Pin 5 -> RS485 VCC
+DB9 Pin 7 -> RS485 A
+
+![ir cable](ir_cable.jpeg)
+
+You can plug the RS485 module directly in to the Arduino. I used an UNO so aligned the it so the DI and DE pins were on the TX and Digital 2 pins respectively.
+You can also stick the IR sensor directly in to the 5v and adjacent ground pin on the Arduino. Run a hook up cable from the send pin (pin 1) of the sensor to
+pin 8 on the Arduino.
+
+If you want to power the board from the BVM, take the RS485 VCC to Vin and GND to any ground pin on the Arduino.
+
+![ir_setup](ir_setup.jpeg)
+
 ## Thanks
 
 I found the control codes on an anonymous [pastebin](https://pastebin.com/aTUWf33J), so must thank this unknown hero.
