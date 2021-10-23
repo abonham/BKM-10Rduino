@@ -2,6 +2,8 @@
 
 BKM-10Rduino is an Arduino (natch) based alternative for the Sony BKM-10R control unit typically used with Sony broadcast monitors like the BVM-D20F1a/e/u.
 
+![Finished board](BKM10Rduino.jpeg)
+
 ## Why?
 
 BVM and PVM CRTs are rather popular with retro gaming enthusiasts, but they are being priced out of reach for the average fan. I managed to rescue a BVM-D20F1A that was destined for e-waste. Of course it was missing the control unit and it was stuck on the SDI input. One spare Arduino Nano, a couple of components, and a lot of swearing later, I had something good enough to use the menus to change inputs and do basic setup.
@@ -25,29 +27,65 @@ The basic hardware can be put together on a breadboard if you only need it as a 
 After that, just upload the arudino sketch, it's been tested on UNO and NANO boards so far, make yourself a cable and enjoy.
 
 ### Parts list
-Arduino UNO, NANO, etc
-5 tactile switches of your choice, design is based on 4 pin single pole switches
-5 pull-down resistors, anything from 4-10k should be fine
-MAX485 based TTL UART to RS485 Converter Module, like [this one](https://core-electronics.com.au/ttl-uart-to-rs485-converter-module.html)
-Something to stick it all on
+* Arduino UNO, NANO, etc
+* 5 tactile switches of your choice, design is based on 4 pin single pole switches
+* 5 pull-down resistors, anything from 4-10k should be fine
+* MAX485 based TTL UART to RS485 Converter Module, like [this one](https://core-electronics.com.au/ttl-uart-to-rs485-converter-module.html)
+* Something to stick it all on
 
 ### Cable
 
 The BVM end is just a standard DB9 connector, I used a 6 pin header on my prototype, but you can use what ever you want to connect to your controller. I sacrificed a short CAT-5 cable for mine.
 
-The BKM-10R uses RS485 for communication, which is a differential signally communication protocol. Basically, TX from the Arduino is converted to a pair of line +TXD and -TXD. RXD is here for the future, when I might decide I want a status display.
 
-Pin 1 -> GND (H1 pin 6)
-Pin 2 -> -TXD (H1 pin 2)
-Pin 3 -> +RXD (H1 pin 4 - unused)
-Pin 4 -> GND (can be tied to 1)
-Pin 5 -> +5v (H1 pin 1)
-Pin 6 -> GND
-Pin 7 -> +TXD
-Pin 8 -> RXD-
-Pin 9 -> GND
+The BKM-10R uses RS485 for communication, which is a differential signally communication protocol. Basically, TX from the Arduino is converted to a pair of line +TXD and -TXD. RXD is here for the future, when I might decide I want a status display.
+DB9 | H1
+--- | --
+Pin 1 | GND (pin 6)
+Pin 2 | -TXD (pin 2)
+Pin 3 | +RXD (pin 4 - unused)
+Pin 4 | GND
+Pin 5 | +5v (pin 1)
+Pin 6 | GND
+Pin 7 | +TXD (pin 3)
+Pin 8 | -RXD (pin 5 - unused)
+Pin 9 | GND
+
 
 Don't mix up TXD and RXD otherwise you'll spend an afternoon wondering why it doesn't work.
+
+## Less hardware, more software IR version
+
+The BKM10iRduino directory contains an Arduino sketch that allows you to use any kind of spare tv remote you have lying around. This one takes *way* less soldering, 
+uses far fewer parts and is also lets you control your BVM from across the room!
+
+
+Downside is that you'll need to edit the `constants.h` file with key codes for your specific remote control. There's another sketch called `find_ir_codes` 
+that will just dump the codes to the serial monitor, which you can copy and paste into the constants file. Make sure you've installed the 
+[IR library](https://www.arduinolibraries.info/libraries/irmp) in the Arduino IDE
+
+
+All you need is the same TTL to RS485 module as above and any cheap three pin IR sensor. You'll also still need to make a DB9 cable.
+
+DB9 | RS485
+--- | -----
+Pin 1 | GND
+Pin 2 | B
+Pin 5 | VCC
+Pin 7 | A
+
+![ir cable](ir_cable.jpeg)
+
+You can plug the RS485 module directly in to the Arduino. I used an UNO so aligned the it so the DI and DE pins were on the TX and Digital 2 pins respectively.
+You can also stick the IR sensor directly in to the 5v and adjacent ground pin on the Arduino. Run a hook up cable from the send pin (pin 1) of the sensor to
+pin 8 on the Arduino.
+
+
+If you want to power the board from the BVM, take the RS485 VCC to Vin and GND to any ground pin on the Arduino.
+
+![ir_setup](ir_setup.jpeg)
+
+The minimum keys you'll need are Menu, Enter, Up and Down, but there's also a few more available in the sketch.
 
 ## Thanks
 
