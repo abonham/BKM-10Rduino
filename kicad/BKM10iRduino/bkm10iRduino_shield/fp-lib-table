@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name SSD1306)(type KiCad)(uri /Users/aaron/code/fun/BKM-10Rduino/kicad/BKM10iRduino/KiCad-SSD1306-128x64-master/library/SSD1306.pretty)(options "")(descr ""))
+  (lib (name bkm10rduino)(type KiCad)(uri ${KIPRJMOD}/bkm10rduino.pretty)(options "")(descr ""))
+)

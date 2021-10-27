@@ -3,50 +3,46 @@
 #include "TinyIRReceiver.hpp"
 #include "constants.h"
 
-bool processing = false;
-bool sending = false;
+ControlCode *next;
 
 void setup() {
-  digitalWrite(2, HIGH);
+  digitalWrite(9, HIGH);
   Serial.begin(38400);
+  
+
   initPCIInterruptForTinyReceiver();
 }
 
 void loop() {
-
+  if (next != NULL) {
+    sendCode(next);
+    next = NULL;
+  }
 }
 
-void sendCode(ControlCode code) {
-  sending = true;
+void sendCode(ControlCode *code) {
   Serial.write(ISWBank);
   delay(50);
   
   Serial.write(keydown);
-  Serial.write(code.group);
-  Serial.write(code.code);
-  processing = false;
-  sending = false;
+  Serial.write(code->group);
+  Serial.write(code->code);
 }
 
 void handleReceivedTinyIRData(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
-  if (isRepeat || sending) {
-    return;
-  }
-  if (!processing) {
-    processing = true;
-  } else {
-    return;
-  }
+  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(LED_BUILTIN, LOW);
 
   int x = sizeof(commands) / sizeof(Command);
   for (int i = 0; i < x; i++) {
     if (aAddress == commands[i].key.address) {
       if (aCommand == commands[i].key.code) {
-        sendCode(commands[i].cmd);
+        ControlCode *toSend = (ControlCode*)&commands[i].cmd;
+        if (!isRepeat || (isRepeat && commands[i].repeats)) {
+          next = toSend;
+        }
         return;
       }
     }
   }
-
-  processing = false;
 }

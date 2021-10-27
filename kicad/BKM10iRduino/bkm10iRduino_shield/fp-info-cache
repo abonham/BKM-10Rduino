@@ -1,0 +1,29 @@
+6539447929068
+bkm10rduino
+6_PIN_HEADER
+
+
+0
+6
+6
+bkm10rduino
+SW_PUSH_6mm_H5mm
+tactile push button, 6x6mm e.g. PHAP33xx series, height=5mm
+tact sw push 6mm
+0
+4
+2
+bkm10rduino
+SW_Tactile_SPDP_12.3_5mm
+
+
+0
+4
+4
+bkm10rduino
+TLL_RS485
+
+
+0
+8
+8
