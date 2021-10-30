@@ -1,5 +1,12 @@
 #include <Arduino.h>
-#define IR_INPUT_PIN    8
+
+#define IR_INPUT_PIN        8
+#define BUTTON_DOWN_PIN     2
+#define BUTTON_UP_PIN       3
+#define BUTTON_MENU_PIN     7
+#define BUTTON_ENTER_PIN    4
+#define BUTTON_POWER_PIN    5
+
 #include "TinyIRReceiver.hpp"
 #include "constants.h"
 
@@ -9,7 +16,6 @@ void setup() {
   digitalWrite(9, HIGH);
   Serial.begin(38400);
   
-
   initPCIInterruptForTinyReceiver();
 }
 

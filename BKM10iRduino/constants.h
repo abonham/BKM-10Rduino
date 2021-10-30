@@ -18,6 +18,12 @@ struct Command {
   bool repeats;
 } command;
 
+const int buttonUp = 1;
+const int buttonDown = 1 << 1;
+const int buttonMenu = 1 << 2;
+const int buttonEnter = 1 << 3;
+const int buttonPwr = 1 << 4;
+
 const RemoteKey remotePwr = { 0x6CD2, 0xCB };
 const RemoteKey remoteEnter = { 0x6DD2, 0x97 };
 const RemoteKey remoteMenu = { 0x6CD2, 0x53 };
