@@ -1,6 +1,8 @@
 #define QUEUE_SIZE 16
 #define CIRCULAR_BUFFER_INT_SAFE
 
+#define SERIAL_LOGGING 1
+
 #include "BKM10Rduino.h"
 #include <CircularBuffer.h>
 
@@ -38,6 +40,7 @@ void setup() {
 
 void loop() {
   updateIsLearning();
+  
   if (millis() - lastPoll > 150) {
     int previous = buttonState;
     readButtons();
@@ -54,14 +57,18 @@ void loop() {
     if (digitalRead(11) == LOW) {
       learningInput->address = 0x01FF;
       learningInput->code = 0x01F;
+      #ifdef SERIAL_LOGGING
       Serial.println("Test learning key");
+      #endif
     }
     lastPoll = millis();
   }
 
   while (!commandBuffer.isEmpty()) {
     ControlCode *code = (ControlCode*)commandBuffer.shift();
+    #ifdef SERIAL_LOGGING
     Serial.println(code->code, HEX);
+    #endif
     sendCode(code);
   }
 }
@@ -77,7 +84,9 @@ void updateIsLearning() {
       if (!isHoldingLearnButton) {
         isHoldingLearnButton = true;
         learnButtonTimer = millis();
+        #ifdef SERIAL_LOGGING
         Serial.println("Maybe trying to learn");
+        #endif
       } else if (millis() - learnButtonTimer > 5000) {
         learningBuffer.clear();
         int s = sizeof(commands) / sizeof(Command);
@@ -85,13 +94,17 @@ void updateIsLearning() {
           learningBuffer.push(&commands[i].key);
         }
         learning = true;
+        #ifdef SERIAL_LOGGING
         Serial.println("Now Learning");
+        #endif
         learnButtonTimer = millis();
       }
     }
   } else if (learnButtonState == LOW && !isHoldingLearnButton && millis() - learnButtonTimer > 1000) {
     learning = false;
+    #ifdef SERIAL_LOGGING
     Serial.println("Abort learning");
+    #endif
   } else {
     processLearnQueue();
   }
@@ -109,14 +122,18 @@ void processLearnQueue() {
   
 
   RemoteKey *newKey = learningBuffer.shift();
+  #ifdef SERIAL_LOGGING
   Serial.print("old: ");
   Serial.print(newKey->address, HEX);
   Serial.println(newKey->code, HEX);
+  #endif
   newKey->address = learningInput->address;
   newKey->code = learningInput->code;
+  #ifdef SERIAL_LOGGING
   Serial.print("new: ");
   Serial.print(newKey->address, HEX);
   Serial.println(newKey->code, HEX);
+  #endif
 
   learningInput->address = 0;
   learningInput->code = 0;
@@ -138,9 +155,11 @@ void handleReceivedTinyIRData(uint16_t aAddress, uint8_t aCommand, bool isRepeat
   if (!learning) {
     handleRemoteCommand(aAddress, aCommand, isRepeat);
   } else {
+    #ifdef SERIAL_LOGGING
     Serial.print("Learned: ");
     Serial.print(aAddress, HEX);
     Serial.println(aCommand, HEX);
+    #endif
     learnRemoteCommand(aAddress, aCommand, isRepeat);
   }
 }
