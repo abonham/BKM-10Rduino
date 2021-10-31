@@ -8,6 +8,7 @@
 #define BUTTON_ENTER_PIN    4
 #define BUTTON_POWER_PIN    5
 #define TX_ENABLE_PIN       12
+#define LEARN_ENABLE_PIN    10
 
 #include "TinyIRReceiver.hpp"
 

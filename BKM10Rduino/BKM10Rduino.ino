@@ -13,9 +13,12 @@ unsigned long lastPoll;
 bool learning = false;
 bool isHoldingLearnButton = false;
 unsigned long learnButtonTimer;
-  
+
 struct RemoteKey *learningInput;
 CircularBuffer<RemoteKey*, 32> learningBuffer;
+
+#define DEBUG
+#define DEBUG_BUTTON 11
 
 void setup() {
   Serial.begin(38400);
@@ -30,17 +33,21 @@ void setup() {
   pinMode(BUTTON_POWER_PIN, INPUT);
   pinMode(TX_ENABLE_PIN, OUTPUT);
   digitalWrite(TX_ENABLE_PIN, HIGH);
-  pinMode(10, INPUT_PULLUP);
-  pinMode(11, INPUT_PULLUP);
+  pinMode(LEARN_ENABLE_PIN, INPUT_PULLUP);
+  
+#ifdef DEBUG
+  pinMode(DEBUG_BUTTON, INPUT_PULLUP);
+#endif
+
   lastPoll = millis();
   learnButtonTimer = millis();
-  RemoteKey empty = {0,0};
+  RemoteKey empty = {0, 0};
   learningInput = &empty;
 }
 
 void loop() {
   updateIsLearning();
-  
+
   if (millis() - lastPoll > 150) {
     int previous = buttonState;
     readButtons();
@@ -54,21 +61,24 @@ void loop() {
       sendButtonCommand();
     }
 
-    if (digitalRead(11) == LOW) {
+#ifdef DEBUG
+    if (digitalRead(DEBUG_BUTTON) == LOW) {
       learningInput->address = 0x01FF;
       learningInput->code = 0x01F;
-      #ifdef SERIAL_LOGGING
+#ifdef SERIAL_LOGGING
       Serial.println("Test learning key");
-      #endif
+#endif
     }
+#endif
+
     lastPoll = millis();
   }
 
   while (!commandBuffer.isEmpty()) {
     ControlCode *code = (ControlCode*)commandBuffer.shift();
-    #ifdef SERIAL_LOGGING
+#ifdef SERIAL_LOGGING
     Serial.println(code->code, HEX);
-    #endif
+#endif
     sendCode(code);
   }
 }
@@ -84,9 +94,9 @@ void updateIsLearning() {
       if (!isHoldingLearnButton) {
         isHoldingLearnButton = true;
         learnButtonTimer = millis();
-        #ifdef SERIAL_LOGGING
+#ifdef SERIAL_LOGGING
         Serial.println("Maybe trying to learn");
-        #endif
+#endif
       } else if (millis() - learnButtonTimer > 5000) {
         learningBuffer.clear();
         int s = sizeof(commands) / sizeof(Command);
@@ -94,17 +104,17 @@ void updateIsLearning() {
           learningBuffer.push(&commands[i].key);
         }
         learning = true;
-        #ifdef SERIAL_LOGGING
+#ifdef SERIAL_LOGGING
         Serial.println("Now Learning");
-        #endif
+#endif
         learnButtonTimer = millis();
       }
     }
   } else if (learnButtonState == LOW && !isHoldingLearnButton && millis() - learnButtonTimer > 1000) {
     learning = false;
-    #ifdef SERIAL_LOGGING
+#ifdef SERIAL_LOGGING
     Serial.println("Abort learning");
-    #endif
+#endif
   } else {
     processLearnQueue();
   }
@@ -116,24 +126,24 @@ void processLearnQueue() {
     return;
   }
 
-  if (learningInput->address == 0) { 
+  if (learningInput->address == 0) {
     return;
   }
-  
+
 
   RemoteKey *newKey = learningBuffer.shift();
-  #ifdef SERIAL_LOGGING
+#ifdef SERIAL_LOGGING
   Serial.print("old: ");
   Serial.print(newKey->address, HEX);
   Serial.println(newKey->code, HEX);
-  #endif
+#endif
   newKey->address = learningInput->address;
   newKey->code = learningInput->code;
-  #ifdef SERIAL_LOGGING
+#ifdef SERIAL_LOGGING
   Serial.print("new: ");
   Serial.print(newKey->address, HEX);
   Serial.println(newKey->code, HEX);
-  #endif
+#endif
 
   learningInput->address = 0;
   learningInput->code = 0;
@@ -155,11 +165,11 @@ void handleReceivedTinyIRData(uint16_t aAddress, uint8_t aCommand, bool isRepeat
   if (!learning) {
     handleRemoteCommand(aAddress, aCommand, isRepeat);
   } else {
-    #ifdef SERIAL_LOGGING
+#ifdef SERIAL_LOGGING
     Serial.print("Learned: ");
     Serial.print(aAddress, HEX);
     Serial.println(aCommand, HEX);
-    #endif
+#endif
     learnRemoteCommand(aAddress, aCommand, isRepeat);
   }
 }
