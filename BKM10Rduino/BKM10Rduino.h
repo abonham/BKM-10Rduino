@@ -21,6 +21,8 @@
 
 #include "TinyIRReceiver.hpp"
 
+#include <EEPROM.h>
+
 const byte keydown = 0x44;
 
 const char ISWBank[] = "ISW";
@@ -32,8 +34,10 @@ struct RemoteKey {
 } remoteKey;
 
 struct StoredKey {
-  RemoteKey operator [] (int) {
-    return { 0x6CD2, 0xCB };
+  RemoteKey operator [] (int i) {
+    RemoteKey k;
+    EEPROM.get(i * sizeof(RemoteKey), k);
+    return k;
   };
 };
 
@@ -44,9 +48,9 @@ struct ControlCode {
 
 struct Command {
   struct ControlCode cmd;
-  struct RemoteKey key;
+//  struct RemoteKey key;
   bool repeats;
-  char * desc;
+  uint8_t id;
 } command;
 
 struct ButtonCommand {
@@ -68,25 +72,25 @@ struct Timers {
 #define buttonEnter 1 << 3
 #define buttonPwr 1 << 4
 
-static RemoteKey remotePwr =      { 0x6CD2, 0xCB, 0   };
-static RemoteKey remoteEnter =    { 0x6DD2, 0x97, 1   };
-static RemoteKey remoteMenu =     { 0x6CD2, 0x53, 2   };
-static RemoteKey remoteUp =       { 0x6DD2, 0x82, 3   };
-static RemoteKey remoteDown =     { 0x6DD2, 0x83, 4   };
-static RemoteKey remoteOne =      { 0x02D2, 0xD5, 5   };
-static RemoteKey remoteTwo =      { 0x02D2, 0xD6, 6   };
-static RemoteKey remoteThree =    { 0x02D2, 0xD7, 7   };
-static RemoteKey remoteFour =     { 0x02D2, 0xD8, 8   };
-static RemoteKey remoteFive =     { 0x02D2, 0xD9, 9   };
-static RemoteKey remoteSix =      { 0x02D2, 0xDA, 10  };
-static RemoteKey remoteSeven =    { 0x02D2, 0xDB, 11  };
-static RemoteKey remoteEight =    { 0x02D2, 0xDC, 12  };
-static RemoteKey remoteNine =     { 0x02D2, 0xDD, 13  };
-static RemoteKey remoteZero =     { 0x02D2, 0xDE, 14  };
-static RemoteKey remoteDel =      { 0x6DD2, 0x95, 15  };
-static RemoteKey remoteEnt =      { 0x6DD2, 0x5D, 16  };
-static RemoteKey remoteOverscan = { 0x6CD2, 0x88, 17  };
-static RemoteKey remoteShift =    { 0x6CD2, 0x54, 18  };
+//static RemoteKey remotePwr =      { 0x6CD2, 0xCB, 0   };
+//static RemoteKey remoteEnter =    { 0x6DD2, 0x97, 1   };
+//static RemoteKey remoteMenu =     { 0x6CD2, 0x53, 2   };
+//static RemoteKey remoteUp =       { 0x6DD2, 0x82, 3   };
+//static RemoteKey remoteDown =     { 0x6DD2, 0x83, 4   };
+//static RemoteKey remoteOne =      { 0x02D2, 0xD5, 5   };
+//static RemoteKey remoteTwo =      { 0x02D2, 0xD6, 6   };
+//static RemoteKey remoteThree =    { 0x02D2, 0xD7, 7   };
+//static RemoteKey remoteFour =     { 0x02D2, 0xD8, 8   };
+//static RemoteKey remoteFive =     { 0x02D2, 0xD9, 9   };
+//static RemoteKey remoteSix =      { 0x02D2, 0xDA, 10  };
+//static RemoteKey remoteSeven =    { 0x02D2, 0xDB, 11  };
+//static RemoteKey remoteEight =    { 0x02D2, 0xDC, 12  };
+//static RemoteKey remoteNine =     { 0x02D2, 0xDD, 13  };
+//static RemoteKey remoteZero =     { 0x02D2, 0xDE, 14  };
+//static RemoteKey remoteDel =      { 0x6DD2, 0x95, 15  };
+//static RemoteKey remoteEnt =      { 0x6DD2, 0x5D, 16  };
+//static RemoteKey remoteOverscan = { 0x6CD2, 0x88, 17  };
+//static RemoteKey remoteShift =    { 0x6CD2, 0x54, 18  };
 //
 //static ControlCode pwrCode = { 0x01, 0x10 };
 //static ControlCode upCode = { 0x02, 0x40 };
@@ -177,26 +181,48 @@ const char * const names[] PROGMEM = {
   overscan,
 };
 
-static struct Command commands[] = {
-  { { 0x01, 0x10 }, remotePwr, false, names[0] },
-  { { 0x02, 0x10 }, remoteMenu, false, names[1]},
-  { { 0x02, 0x20 }, remoteEnter, false, names[2]},
-  { { 0x02, 0x40 }, remoteUp, true, names[3]},
-  { { 0x02, 0x80 }, remoteDown, true, names[4] },
-  { { 0x00, 0x01 }, remoteZero, false, names[5] },
-  { { 0x00, 0x02 }, remoteOne, false, names[6] },
-  { { 0x00, 0x04 }, remoteTwo, false, names[7] },
-  { { 0x00, 0x08 }, remoteThree, false, names[8] },
-  { { 0x00, 0x10 }, remoteFour, false, names[9] },
-  { { 0x00, 0x20 }, remoteFive, false, names[10] },
-  { { 0x00, 0x40 }, remoteSix, false, names[11] },
-  { { 0x00, 0x80 }, remoteSeven, false, names[12] },
-  { { 0x01, 0x01 }, remoteEight, false, names[13] },
-  { { 0x01, 0x02 }, remoteNine, false, names[14] },
-  { { 0x01, 0x04 }, remoteDel, true, names[15] },
-  { { 0x01, 0x08 }, remoteEnt, false, names[16] },
-  { { 0x03, 0x01 }, remoteShift, false, names[17] },
-  { { 0x03, 0x02 }, remoteOverscan, false, names[18] },
+//static struct Command commands[] = {
+//  { { 0x01, 0x10 }, remotePwr, false, 0 },
+//  { { 0x02, 0x10 }, remoteMenu, false, 1},
+//  { { 0x02, 0x20 }, remoteEnter, false, 2},
+//  { { 0x02, 0x40 }, remoteUp, true, 3},
+//  { { 0x02, 0x80 }, remoteDown, true, 4 },
+//  { { 0x00, 0x01 }, remoteZero, false, 5 },
+//  { { 0x00, 0x02 }, remoteOne, false, 6 },
+//  { { 0x00, 0x04 }, remoteTwo, false, 7 },
+//  { { 0x00, 0x08 }, remoteThree, false, 8 },
+//  { { 0x00, 0x10 }, remoteFour, false, 9 },
+//  { { 0x00, 0x20 }, remoteFive, false, 10 },
+//  { { 0x00, 0x40 }, remoteSix, false, 11 },
+//  { { 0x00, 0x80 }, remoteSeven, false, 12 },
+//  { { 0x01, 0x01 }, remoteEight, false, 13 },
+//  { { 0x01, 0x02 }, remoteNine, false, 14 },
+//  { { 0x01, 0x04 }, remoteDel, true, 15 },
+//  { { 0x01, 0x08 }, remoteEnt, false, 16 },
+//  { { 0x03, 0x01 }, remoteShift, false, 17 },
+//  { { 0x03, 0x02 }, remoteOverscan, false, 18 },
+//};
+
+const struct Command commands[] = {
+  { { 0x01, 0x10 }, false, 0 },
+  { { 0x02, 0x10 }, false, 1},
+  { { 0x02, 0x20 }, false, 2},
+  { { 0x02, 0x40 }, true, 3},
+  { { 0x02, 0x80 }, true, 4 },
+  { { 0x00, 0x01 }, false, 5 },
+  { { 0x00, 0x02 }, false, 6 },
+  { { 0x00, 0x04 }, false, 7 },
+  { { 0x00, 0x08 }, false, 8 },
+  { { 0x00, 0x10 }, false, 9 },
+  { { 0x00, 0x20 }, false, 10 },
+  { { 0x00, 0x40 }, false, 11 },
+  { { 0x00, 0x80 }, false, 12 },
+  { { 0x01, 0x01 }, false, 13 },
+  { { 0x01, 0x02 }, false, 14 },
+  { { 0x01, 0x04 }, true, 15 },
+  { { 0x01, 0x08 }, false, 16 },
+  { { 0x03, 0x01 }, false, 17 },
+  { { 0x03, 0x02 }, false, 18 },
 };
 
 const struct ButtonCommand buttonCommands[] = {

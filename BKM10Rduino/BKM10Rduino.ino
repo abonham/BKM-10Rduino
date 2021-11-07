@@ -3,9 +3,13 @@
 #define SLEEP_TIMER 60000
 #define CIRCULAR_BUFFER_INT_SAFE
 #define SERIAL_LOGGING 1
+#define __ASSERT_USE_STDERR
+#define POLL_RATE 66
 
 #include "BKM10Rduino.h"
 #include <CircularBuffer.h>
+
+#include <assert.h>
 
 U8X8_SH1106_128X64_NONAME_4W_HW_SPI u8x8(/* cs=*/ 10, /* dc=*/ 9, /* reset=*/ 8);
 
@@ -23,6 +27,9 @@ RemoteKey emptyLearned = {0, 0};
 int learnIndex = 0;
 
 struct Timers * timers = malloc(sizeof(Timers));
+bool displaySleep = false;
+
+StoredKey eeprom;
 
 #define DEBUG 1
 #define DEBUG_BUTTON A7
@@ -33,6 +40,15 @@ void setup() {
 
   learningInput = &emptyLearning;
   lastLearnedInput = &emptyLearned;
+
+  if (!checkROMInit()) {
+    erase();
+    for (int i = 0; i < COMMANDS_SIZE; i++) {
+      RemoteKey k = {i, i, i};
+      EEPROM.put(i * sizeof(RemoteKey), k);
+    }
+    setROMInitFlag(true);
+  }
 
   initPCIInterruptForTinyReceiver();
 
@@ -57,6 +73,20 @@ void setup() {
   u8x8.setFlipMode(1);
   u8x8.setFont(u8x8_font_chroma48medium8_r);
   showName();
+
+#ifdef SERIAL_LOGGING
+  Serial.println("All keys saved in eeprom:\n");
+  for (int i = 0; i < COMMANDS_SIZE; i++) {
+    RemoteKey k = eeprom[i];
+    assert(k.id == i);
+    Serial.print("Address: ");
+    Serial.print(k.address, HEX);
+    Serial.print(", command: ");
+    Serial.print(k.code, HEX);
+    Serial.print(", id: ");
+    Serial.println(k.id, DEC);
+  }
+#endif
 }
 
 void showName() {
@@ -72,7 +102,6 @@ void loop() {
 
     if (learning) {
       u8x8.drawString(0, 4, "press key:");
-      //      if (learningBuffer.first() != NULL) {
       u8x8.setCursor(0, 5);
       char buffer[20];
       strcpy_P(buffer, (char*)pgm_read_word(&(names[learnIndex])));
@@ -91,9 +120,6 @@ void loop() {
 
   while (!commandBuffer.isEmpty()) {
     ControlCode *code = (ControlCode*)commandBuffer.shift();
-#ifdef SERIAL_LOGGING
-    Serial.println(code->code, HEX);
-#endif
     sendCode(code);
   }
 }
@@ -121,17 +147,39 @@ void handleReceivedTinyIRData(uint16_t aAddress, uint8_t aCommand, bool isRepeat
 }
 
 void handleRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
+  RemoteKey input = { aAddress, aCommand, 99 };
   int x = sizeof(commands) / sizeof(Command);
   for (int i = 0; i < x; i++) {
-    if (aAddress == commands[i].key.address) {
-      if (aCommand == commands[i].key.code) {
-        ControlCode *toSend = (ControlCode*)&commands[i].cmd;
-        if (!isRepeat || (isRepeat && commands[i].repeats)) {
-          commandBuffer.push(toSend);
-        }
-        return;
+    RemoteKey k = eeprom[i];
+    if (equals(k, input)) {
+      ControlCode *toSend = (ControlCode*)&commands[i].cmd;
+      if (!isRepeat || (isRepeat && commands[i].repeats)) {
+        commandBuffer.push(toSend);
+#ifdef SERIAL_LOGGING
+        u8x8.setCursor(0, 5);
+        char buffer[20];
+        strcpy_P(buffer, (char*)pgm_read_word(&(names[i])));
+        Serial.println("\nWill send command: ");
+        
+        Serial.print("0x");
+        Serial.print(toSend->code, HEX);
+        Serial.print("(");
+        Serial.print(buffer);
+        Serial.println(")");
+#endif
       }
+      return;
     }
+
+    //    if (aAddress == commands[i].key.address) {
+    //      if (aCommand == commands[i].key.code) {
+    //        ControlCode *toSend = (ControlCode*)&commands[i].cmd;
+    //        if (!isRepeat || (isRepeat && commands[i].repeats)) {
+    //          commandBuffer.push(toSend);
+    //        }
+    //        return;
+    //      }
+    //    }
   }
 }
 
@@ -148,8 +196,10 @@ void updateIsLearning() {
   if (!learning) {
     if (learnButtonState == LOW) {
       if (!isHoldingLearnButton) {
-        u8x8.drawString(0, 2, "Hold to start");
-        u8x8.drawString(0, 3, "leaning keys");
+        u8x8.setCursor(0, 2);
+        u8x8.print(F("Hold to start"));
+        u8x8.setCursor(0, 3);
+        u8x8.print("learning remote");
         isHoldingLearnButton = true;
       } else if (millis() - timers->learnHold > 1000) {
 
@@ -175,7 +225,6 @@ void cancelLearning() {
   lastLearnedInput->address = 0;
   lastLearnedInput->code = 0;
   learnIndex = 0;
-  u8x8.clear();
   showName();
 }
 
@@ -189,25 +238,32 @@ void processLearnQueue() {
     return;
   }
 
-  RemoteKey *newKey = &(commands[learnIndex].key);
+  //  RemoteKey *newKey = &(commands[learnIndex].key);
+
+
 
 #ifdef SERIAL_LOGGING
+  RemoteKey old = eeprom[learnIndex];
   Serial.print("old: ");
-  Serial.print(newKey->address, HEX);
-  Serial.println(newKey->code, HEX);
+  Serial.print(old.address, HEX);
+  Serial.println(old.code, HEX);
 #endif
+  //
+  //  newKey->address = learningInput->address;
+  //  newKey->code = learningInput->code;
 
-  newKey->address = learningInput->address;
-  newKey->code = learningInput->code;
+  RemoteKey newKey = { learningInput->address, learningInput->code, learnIndex };
 
 #ifdef SERIAL_LOGGING
   Serial.print("new: ");
-  Serial.print(newKey->address, HEX);
-  Serial.println(newKey->code, HEX);
+  Serial.print(newKey.address, HEX);
+  Serial.println(newKey.code, HEX);
 #endif
 
-  lastLearnedInput->address = newKey->address;
-  lastLearnedInput->code = newKey->code;
+  EEPROM.put(learnIndex * sizeof(RemoteKey), newKey);
+
+  lastLearnedInput->address = newKey.address;
+  lastLearnedInput->code = newKey.code;
   learningInput->address = 0;
   learningInput->code = 0;
   learnIndex++;
@@ -276,13 +332,45 @@ void dumpNames() {
 }
 
 void powerSave() {
-  if (millis() - timers->lastInput > SLEEP_TIMER) {
+  if ((millis() - timers->lastInput > SLEEP_TIMER) && !displaySleep) {
     cancelLearning();
     u8x8.setPowerSave(1);
-  } else {
+    displaySleep = true;
+  } else if ((millis() - timers->lastInput < SLEEP_TIMER) && displaySleep) {
     u8x8.setPowerSave(0);
     showName();
+    displaySleep = false;
   }
+}
+
+//MARK:- EEPROM
+
+
+bool checkROMInit() {
+  return EEPROM.read(EEPROM.length() - 1) == 0xAA;
+}
+
+void setROMInitFlag(bool value) {
+  int toWrite = value ? 0xAA : 0x00;
+  EEPROM.write(EEPROM.length() - 1, toWrite);
+}
+
+void erase(void)
+{
+  for (int i = 0 ; i < EEPROM.length() ; i++)
+    EEPROM.write(i, 0);
+}
+
+// handle diagnostic informations given by assertion and abort program execution:
+void __assert(const char *__func, const char *__file, int __lineno, const char *__sexp) {
+  // transmit diagnostic informations through serial link.
+  Serial.println(__func);
+  Serial.println(__file);
+  Serial.println(__lineno, DEC);
+  Serial.println(__sexp);
+  Serial.flush();
+  // abort program execution.
+  abort();
 }
 
 /*** Thank you to the anonymous pastebin hero responsible for providing the control codes ***/
