@@ -1,45 +1,46 @@
-#define COMMANDS_SIZE 19
-#define LEARN_TIMEOUT 1000
+#define LEARN_TIMEOUT 3000
 #define SLEEP_TIMER 60000
 #define CIRCULAR_BUFFER_INT_SAFE
 #define SERIAL_LOGGING 1
 #define __ASSERT_USE_STDERR
 #define POLL_RATE 66
 
+//#define USE_PHYSICAL_BUTTONS 1
+//#define FULL_DUPLEX 1
+
 #include "BKM10Rduino.h"
 #include <CircularBuffer.h>
 
 #include <assert.h>
 
-U8X8_SH1106_128X64_NONAME_4W_HW_SPI u8x8(/* cs=*/ 10, /* dc=*/ 9, /* reset=*/ 8);
-
 CircularBuffer<void*, 4> commandBuffer;
+
+#ifdef USE_PHYSICAL_BUTTONS
 int buttonState = 0;
+#endif
 
 bool learning = false;
 bool isHoldingLearnButton = false;
-
-struct RemoteKey *learningInput;
-struct RemoteKey *lastLearnedInput;
-RemoteKey emptyLearning = {0, 0};
-RemoteKey emptyLearned = {0, 0};
-
 int learnIndex = 0;
+struct RemoteKey *learningInput = malloc(sizeof(RemoteKey));
+struct RemoteKey *lastLearnedInput = malloc(sizeof(RemoteKey));
 
 struct Timers * timers = malloc(sizeof(Timers));
 bool displaySleep = false;
 
+//subscript accessor for RemoteKeys in EEPROM
 StoredKey eeprom;
+
+U8X8_SH1106_128X64_NONAME_4W_HW_SPI u8x8(/* cs=*/ 10, /* dc=*/ 9, /* reset=*/ 8);
 
 #define DEBUG 1
 #define DEBUG_BUTTON A7
 
 void setup() {
-  //  timers = (Timers *)mallloc(sizeof(Timers));
   Serial.begin(38400);
 
-  learningInput = &emptyLearning;
-  lastLearnedInput = &emptyLearned;
+  *learningInput = { 0, 0 };
+  *lastLearnedInput = { 0, 0 };
 
   if (!checkROMInit()) {
     erase();
@@ -53,15 +54,24 @@ void setup() {
   initPCIInterruptForTinyReceiver();
 
 
+
+#ifdef USE_PHYSICAL_BUTTONS
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(BUTTON_DOWN_PIN, INPUT);
   pinMode(BUTTON_UP_PIN, INPUT);
   pinMode(BUTTON_MENU_PIN, INPUT);
   pinMode(BUTTON_ENTER_PIN, INPUT);
   pinMode(BUTTON_POWER_PIN, INPUT);
+#endif
+
+  pinMode(LEARN_ENABLE_PIN, INPUT_PULLUP);
+
   pinMode(TX_ENABLE_PIN, OUTPUT);
   digitalWrite(TX_ENABLE_PIN, HIGH);
-  pinMode(LEARN_ENABLE_PIN, INPUT_PULLUP);
+#ifdef FULL_DUPLEX
+  pinMode(RX_ENABLE_PIN, OUTPUT);
+  digitalWrite(RX_ENABLE_PIN, HIGH);
+#endif
 
 
   timers->lastPoll = millis();
@@ -97,34 +107,48 @@ void showName() {
 
 void loop() {
 
+  updateState();
+
+  processCommandBuffer();
+}
+
+void updateState() {
   if (millis() - timers->lastPoll > 150) {
     updateIsLearning();
 
     if (learning) {
       u8x8.drawString(0, 4, "press key:");
-      u8x8.setCursor(0, 5);
+      //      u8x8.setCursor(0, 5);
       char buffer[20];
       strcpy_P(buffer, (char*)pgm_read_word(&(names[learnIndex])));
-      u8x8.print(buffer);
+      //      u8x8.print(buffer);
+      u8x8.setInverseFont(1);
+      u8x8.drawString(0, 5, buffer);
+      u8x8.setInverseFont(0);
     }
 
+#ifdef USE_PHYSICAL_BUTTONS
     int previous = buttonState;
-    //    readButtons();
+    readButtons();
 
     if (previous != buttonState) {
       sendButtonCommand();
     }
+#endif
+
     timers->lastPoll = millis();
     powerSave();
   }
+}
 
+//MARK:- BKM-10R TX/RX methods
+
+void processCommandBuffer() {
   while (!commandBuffer.isEmpty()) {
     ControlCode *code = (ControlCode*)commandBuffer.shift();
     sendCode(code);
   }
 }
-
-//MARK:- BKM-10R TX/RX methods
 
 void sendCode(ControlCode *code) {
   Serial.write(ISWBank);
@@ -136,7 +160,6 @@ void sendCode(ControlCode *code) {
 }
 
 //MARK:- IR receiver interupt handlers
-
 void handleReceivedTinyIRData(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
   timers->lastInput = millis();
   if (!learning) {
@@ -160,7 +183,6 @@ void handleRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
         char buffer[20];
         strcpy_P(buffer, (char*)pgm_read_word(&(names[i])));
         Serial.println("\nWill send command: ");
-        
         Serial.print("0x");
         Serial.print(toSend->code, HEX);
         Serial.print("(");
@@ -170,21 +192,10 @@ void handleRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
       }
       return;
     }
-
-    //    if (aAddress == commands[i].key.address) {
-    //      if (aCommand == commands[i].key.code) {
-    //        ControlCode *toSend = (ControlCode*)&commands[i].cmd;
-    //        if (!isRepeat || (isRepeat && commands[i].repeats)) {
-    //          commandBuffer.push(toSend);
-    //        }
-    //        return;
-    //      }
-    //    }
   }
 }
 
 //MARK:- Learn remote control
-
 void updateIsLearning() {
   int learnButtonState = digitalRead(LEARN_ENABLE_PIN);
   if (learnButtonState == HIGH) {
@@ -201,7 +212,7 @@ void updateIsLearning() {
         u8x8.setCursor(0, 3);
         u8x8.print("learning remote");
         isHoldingLearnButton = true;
-      } else if (millis() - timers->learnHold > 1000) {
+      } else if (millis() - timers->learnHold > LEARN_TIMEOUT) {
 
 #ifdef SERIAL_LOGGING
         dumpNames();
@@ -238,19 +249,12 @@ void processLearnQueue() {
     return;
   }
 
-  //  RemoteKey *newKey = &(commands[learnIndex].key);
-
-
-
 #ifdef SERIAL_LOGGING
   RemoteKey old = eeprom[learnIndex];
   Serial.print("old: ");
   Serial.print(old.address, HEX);
   Serial.println(old.code, HEX);
 #endif
-  //
-  //  newKey->address = learningInput->address;
-  //  newKey->code = learningInput->code;
 
   RemoteKey newKey = { learningInput->address, learningInput->code, learnIndex };
 
@@ -267,13 +271,14 @@ void processLearnQueue() {
   learningInput->address = 0;
   learningInput->code = 0;
   learnIndex++;
+  u8x8.clearLine(5);
 }
 
 void learnRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
-  //easy ignore for holding ir button too long
+  //Easy ignore for holding ir button too long
   if (isRepeat) return;
 
-  //don't double process keys that don't send isRepeat, like vol +/-
+  //Don't double process keys that don't send isRepeat, like vol +/-
   if (aAddress == lastLearnedInput->address && aCommand == lastLearnedInput->code) return;
 
   //Since we are coming from an interupt, don't process if main thread hasn't finished processing last command
@@ -288,7 +293,7 @@ void learnRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
 }
 
 //MARK:- Physical button handling
-
+#ifdef USE_PHYSICAL_BUTTONS
 void readButtons() {
   buttonState = LOW;
 
@@ -315,9 +320,9 @@ void sendButtonCommand() {
     }
   }
 }
+#endif
 
 //MARK:- Helpers
-
 bool equals(RemoteKey lhs, RemoteKey rhs) {
   return lhs.address == rhs.address && lhs.code == rhs.code;
 }
@@ -344,8 +349,6 @@ void powerSave() {
 }
 
 //MARK:- EEPROM
-
-
 bool checkROMInit() {
   return EEPROM.read(EEPROM.length() - 1) == 0xAA;
 }
