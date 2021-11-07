@@ -1,4 +1,3 @@
-
 #include <Arduino.h>
 
 #define IR_INPUT_PIN        7
@@ -9,6 +8,7 @@
 #define BUTTON_POWER_PIN    A3
 #define TX_ENABLE_PIN       2
 #define LEARN_ENABLE_PIN    5
+#define NUMBER_OF_COMMANDS  32
 
 #include <U8g2lib.h>
 
@@ -18,7 +18,6 @@
 #ifdef U8X8_HAVE_HW_I2C
 #include <Wire.h>
 #endif
-
 
 #include "TinyIRReceiver.hpp"
 
@@ -37,10 +36,6 @@ struct StoredKey {
     return { 0x6CD2, 0xCB };
   };
 };
-
-bool equals(RemoteKey lhs, RemoteKey rhs) {
-  return lhs.address == rhs.address && lhs.code == rhs.code;
-}
 
 struct ControlCode {
   byte group;
@@ -62,9 +57,9 @@ struct ButtonCommand {
 } buttonCommand;
 
 struct Timers {
-  long lastPoll;
-  long learnHold;
-  long lastInput;
+  unsigned long lastPoll;
+  unsigned long learnHold;
+  unsigned long lastInput;
 };
 
 #define buttonUp 1
