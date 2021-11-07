@@ -52,7 +52,7 @@ struct StoredKey {
 /*
  * Two byte BKM-10R control code
  * 
- * Codes sent over RS485 as `keydown, group, code`
+ * Codes are sent over RS485 as `keydown, group, code`
  */
 struct ControlCode {
   byte group;

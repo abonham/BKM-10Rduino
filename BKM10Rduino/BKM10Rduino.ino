@@ -3,7 +3,11 @@
 #define CIRCULAR_BUFFER_INT_SAFE
 #define SERIAL_LOGGING 1
 #define __ASSERT_USE_STDERR
-#define POLL_RATE 66
+#define POLL_RATE 33
+
+#define LARGE_FONT u8x8_font_px437wyse700b_2x2_f
+#define MEDIUM_FONT  u8x8_font_7x14_1x2_f
+#define SMALL_FONT u8x8_font_chroma48medium8_r
 
 //#define USE_PHYSICAL_BUTTONS 1
 //#define FULL_DUPLEX 1
@@ -53,8 +57,6 @@ void setup() {
 
   initPCIInterruptForTinyReceiver();
 
-
-
 #ifdef USE_PHYSICAL_BUTTONS
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(BUTTON_DOWN_PIN, INPUT);
@@ -81,7 +83,7 @@ void setup() {
   u8x8.begin();
   u8x8.setPowerSave(0);
   u8x8.setFlipMode(1);
-  u8x8.setFont(u8x8_font_chroma48medium8_r);
+  u8x8.setFont(SMALL_FONT);
   showName();
 
 #ifdef SERIAL_LOGGING
@@ -102,28 +104,43 @@ void setup() {
 void showName() {
   u8x8.clear();
   u8x8.home();
+  u8x8.setCursor(2, 4);
   u8x8.print(F("BKM-10iRduino"));
 }
 
 void loop() {
-
   updateState();
-
   processCommandBuffer();
 }
 
 void updateState() {
-  if (millis() - timers->lastPoll > 150) {
+  if (millis() - timers->lastPoll > POLL_RATE) {
     updateIsLearning();
 
-    if (learning) {
-      u8x8.drawString(0, 4, "press key:");
-      //      u8x8.setCursor(0, 5);
-      char buffer[20];
+    if (learning && (learnIndex < COMMANDS_SIZE)) {
+      u8x8.drawString(0, 3, "press key:");
+      char buffer[18] = {};
       strcpy_P(buffer, (char*)pgm_read_word(&(names[learnIndex])));
-      //      u8x8.print(buffer);
+      int l = strlen(buffer);
+
       u8x8.setInverseFont(1);
-      u8x8.drawString(0, 5, buffer);
+      u8x8.setCursor(0, 5);
+      if (l <= 8) {
+        u8x8.setFont(LARGE_FONT);
+        for (int i = 0; i < (8 - strlen(buffer)) / 2; i++) {
+          u8x8.print(" ");
+        }
+        u8x8.print(buffer);
+        for (int i = 0; i <= (8 - strlen(buffer)) / 2; i++) {
+          u8x8.print(" ");
+        }
+      } else {
+        u8x8.setFont(MEDIUM_FONT);
+        u8x8.setCursor(0, 5);
+        u8x8.print(buffer);
+      }
+      u8x8.setFont(SMALL_FONT);
+
       u8x8.setInverseFont(0);
     }
 
@@ -137,26 +154,62 @@ void updateState() {
 #endif
 
     timers->lastPoll = millis();
-    powerSave();
+    //    powerSave();
   }
 }
 
 //MARK:- BKM-10R TX/RX methods
-
-void processCommandBuffer() {
-  while (!commandBuffer.isEmpty()) {
-    ControlCode *code = (ControlCode*)commandBuffer.shift();
-    sendCode(code);
+void processControlMessages() {
+  if (Serial.find("ILE", 3)) {
+    uint8_t ledBank[3];
+    Serial.readBytes(ledBank, 3);
+    uint8_t message[3];
+    Serial.readBytes(message, 3);
   }
 }
 
-void sendCode(ControlCode *code) {
-  Serial.write(ISWBank);
-  delay(50);
+void processCommandBuffer() {
+#ifdef FULL_DUPLEX
+  //Don't send if currently receiving
+  if (!Serial.available()) {
+#endif
+    while (!commandBuffer.isEmpty()) {
+      ControlCode *code = (ControlCode*)commandBuffer.shift();
+      sendCode(code);
+    }
+#ifdef FULL_DUPLEX
+  } else {
+#ifdef SERIAL_LOGGING
+    Serial.println("has serial waiting");
+#endif
+  }
+#endif
+}
 
+/*
+   Sending is currently made a blocking op by Serial.flush().
+   This is to ensure that the serial buffer is empty when setting
+   the half duplex MAX485E read enable after sending.
+
+   This should be fine as it's only ever sending 4 bytes at a time.
+*/
+void sendCode(ControlCode *code) {
+#ifdef FULL_DUPLEX
+  digitalWrite(RX_ENABLE_PIN, HIGH);
+#endif
+
+  Serial.write(ISWBank);
   Serial.write(keydown);
   Serial.write(code->group);
   Serial.write(code->code);
+
+#ifdef FULL_DUPLEX
+  //this is bad, should find a way to check the tx buffer properly
+  //TXCn interupt look ok on surface but is far to complex to use
+  //for this simple requirement.
+  delay(50);
+  digitalWrite(RX_ENABLE_PIN, LOW);
+#endif
 }
 
 //MARK:- IR receiver interupt handlers
@@ -176,10 +229,9 @@ void handleRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
     RemoteKey k = eeprom[i];
     if (equals(k, input)) {
       ControlCode *toSend = (ControlCode*)&commands[i].cmd;
-      if (!isRepeat || (isRepeat && commands[i].repeats)) {
+      if (!isRepeat || commands[i].repeats) { //remotes set isRepeat when holding down a button
         commandBuffer.push(toSend);
 #ifdef SERIAL_LOGGING
-        u8x8.setCursor(0, 5);
         char buffer[20];
         strcpy_P(buffer, (char*)pgm_read_word(&(names[i])));
         Serial.println("\nWill send command: ");
@@ -207,11 +259,13 @@ void updateIsLearning() {
   if (!learning) {
     if (learnButtonState == LOW) {
       if (!isHoldingLearnButton) {
+        u8x8.clear();
         u8x8.setCursor(0, 2);
         u8x8.print(F("Hold to start"));
         u8x8.setCursor(0, 3);
-        u8x8.print("learning remote");
+        u8x8.print(F("learning remote"));
         isHoldingLearnButton = true;
+        timers->learnHold = millis();
       } else if (millis() - timers->learnHold > LEARN_TIMEOUT) {
 
 #ifdef SERIAL_LOGGING
@@ -230,6 +284,9 @@ void updateIsLearning() {
 }
 
 void cancelLearning() {
+#ifdef SERIAL_LOGGING
+  Serial.println("cancel learning");
+#endif
   learning = false;
   learningInput->address = 0;
   learningInput->code = 0;
@@ -240,6 +297,10 @@ void cancelLearning() {
 }
 
 void processLearnQueue() {
+  u8x8.setCursor(0, 2);
+  u8x8.print(learnIndex + 1, DEC);
+  u8x8.print(" of ");
+  u8x8.print(COMMANDS_SIZE);
   if (learnIndex >= COMMANDS_SIZE) {
     cancelLearning();
     return;
@@ -271,7 +332,7 @@ void processLearnQueue() {
   learningInput->address = 0;
   learningInput->code = 0;
   learnIndex++;
-  u8x8.clearLine(5);
+  u8x8.clear();
 }
 
 void learnRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
