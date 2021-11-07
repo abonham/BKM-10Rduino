@@ -6,7 +6,10 @@
 #include "BKM10Rduino.h"
 #include <CircularBuffer.h>
 
-CircularBuffer<void*, 32> commandBuffer;
+//U8G2_SH1106_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/ 10, /* dc=*/ 9, /* reset=*/ 8);
+U8X8_SH1106_128X64_NONAME_4W_HW_SPI u8x8(/* cs=*/ 10, /* dc=*/ 9, /* reset=*/ 8);
+
+CircularBuffer<void*, 4> commandBuffer;
 int buttonState = 0;
 unsigned long lastPoll;
 
@@ -15,15 +18,23 @@ bool isHoldingLearnButton = false;
 unsigned long learnButtonTimer;
 
 struct RemoteKey *learningInput;
-CircularBuffer<RemoteKey*, 32> learningBuffer;
+struct RemoteKey *lastLearnedInput;
+RemoteKey emptyLearning = {0, 0};
+RemoteKey emptyLearned = {0, 0};
 
-#define DEBUG
-#define DEBUG_BUTTON 11
+int learnIndex = 0;
+
+#define DEBUG 1
+#define DEBUG_BUTTON A7
 
 void setup() {
   Serial.begin(38400);
 
+  learningInput = &emptyLearning;
+  lastLearnedInput = &emptyLearned;
+
   initPCIInterruptForTinyReceiver();
+
 
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(BUTTON_DOWN_PIN, INPUT);
@@ -34,43 +45,50 @@ void setup() {
   pinMode(TX_ENABLE_PIN, OUTPUT);
   digitalWrite(TX_ENABLE_PIN, HIGH);
   pinMode(LEARN_ENABLE_PIN, INPUT_PULLUP);
-  
-#ifdef DEBUG
-  pinMode(DEBUG_BUTTON, INPUT_PULLUP);
-#endif
 
   lastPoll = millis();
   learnButtonTimer = millis();
-  RemoteKey empty = {0, 0};
-  learningInput = &empty;
+
+  u8x8.begin();
+  u8x8.setPowerSave(0);
+  u8x8.setFlipMode(1);
+  u8x8.setFont(u8x8_font_chroma48medium8_r);
+  showName();
+}
+
+void showName() {
+  u8x8.clear();
+  u8x8.home();
+  u8x8.print(F("BKM-10iRduino"));
 }
 
 void loop() {
-  updateIsLearning();
 
   if (millis() - lastPoll > 150) {
+    updateIsLearning();
+
+    if (learning) {
+      u8x8.clear();
+      u8x8.drawString(0, 4, "press key:");
+      //      if (learningBuffer.first() != NULL) {
+      u8x8.setCursor(0, 5);
+      char buffer[20];
+      strcpy_P(buffer, (char*)pgm_read_word(&(names[learnIndex])));
+      u8x8.print(buffer);
+      //        #ifdef SERIAL_LOGGING
+      //    Serial.println(learningBuffer.first()->id);
+      //#endif
+      //      } else {
+      //        showName();
+      //      }
+    }
+
     int previous = buttonState;
-    readButtons();
+    //    readButtons();
 
     if (previous != buttonState) {
-
-      int on = buttonState ? HIGH : LOW;
-
-      digitalWrite(LED_BUILTIN, on);
-
       sendButtonCommand();
     }
-
-#ifdef DEBUG
-    if (digitalRead(DEBUG_BUTTON) == LOW) {
-      learningInput->address = 0x01FF;
-      learningInput->code = 0x01F;
-#ifdef SERIAL_LOGGING
-      Serial.println("Test learning key");
-#endif
-    }
-#endif
-
     lastPoll = millis();
   }
 
@@ -84,7 +102,7 @@ void loop() {
 }
 
 void updateIsLearning() {
-  int learnButtonState = digitalRead(10);
+  int learnButtonState = digitalRead(LEARN_ENABLE_PIN);
   if (learnButtonState == HIGH) {
     isHoldingLearnButton = false;
   }
@@ -92,37 +110,53 @@ void updateIsLearning() {
   if (!learning) {
     if (learnButtonState == LOW) {
       if (!isHoldingLearnButton) {
+        u8x8.drawString(0, 2, "Hold to start");
+        u8x8.drawString(0, 3, "leaning keys");
         isHoldingLearnButton = true;
         learnButtonTimer = millis();
 #ifdef SERIAL_LOGGING
         Serial.println("Maybe trying to learn");
 #endif
-      } else if (millis() - learnButtonTimer > 5000) {
-        learningBuffer.clear();
+      } else if (millis() - learnButtonTimer > 1000) {
+        u8x8.clearLine(2);
+        u8x8.clearLine(2);
+
+        learnIndex = 0;
+
+#ifdef SERIAL_LOGGING
         int s = sizeof(commands) / sizeof(Command);
         for (int i = 0; i < s; i++) {
-          learningBuffer.push(&commands[i].key);
+          char buffer[20];
+          strcpy_P(buffer, (char*)pgm_read_word(&(names[i])));
+          Serial.println(buffer);
+#endif
         }
         learning = true;
-#ifdef SERIAL_LOGGING
-        Serial.println("Now Learning");
-#endif
         learnButtonTimer = millis();
       }
     }
   } else if (learnButtonState == LOW && !isHoldingLearnButton && millis() - learnButtonTimer > 1000) {
-    learning = false;
-#ifdef SERIAL_LOGGING
-    Serial.println("Abort learning");
-#endif
+    cancelLearning();
   } else {
     processLearnQueue();
   }
 }
 
-void processLearnQueue() {
-  if (learningBuffer.isEmpty()) {
+void cancelLearning() {
     learning = false;
+    learningInput->address = 0;
+    learningInput->code = 0;
+    lastLearnedInput->address = 0;
+    lastLearnedInput->code = 0;
+    learnIndex = 0;
+    u8x8.clear();
+    showName();
+}
+
+void processLearnQueue() {
+  if (learnIndex >= 19) {
+    cancelLearning();
+
     return;
   }
 
@@ -130,23 +164,28 @@ void processLearnQueue() {
     return;
   }
 
+  RemoteKey *newKey = &(commands[learnIndex].key);
 
-  RemoteKey *newKey = learningBuffer.shift();
-#ifdef SERIAL_LOGGING
-  Serial.print("old: ");
-  Serial.print(newKey->address, HEX);
-  Serial.println(newKey->code, HEX);
-#endif
+  //#ifdef SERIAL_LOGGING
+  //  Serial.print("old: ");
+  //  Serial.print(newKey->address, HEX);
+  //  Serial.println(newKey->code, HEX);
+  //#endif
+
   newKey->address = learningInput->address;
   newKey->code = learningInput->code;
-#ifdef SERIAL_LOGGING
-  Serial.print("new: ");
-  Serial.print(newKey->address, HEX);
-  Serial.println(newKey->code, HEX);
-#endif
 
+  //#ifdef SERIAL_LOGGING
+  //  Serial.print("new: ");
+  //  Serial.print(newKey->address, HEX);
+  //  Serial.println(newKey->code, HEX);
+  //#endif
+
+  lastLearnedInput->address = newKey->address;
+  lastLearnedInput->code = newKey->code;
   learningInput->address = 0;
   learningInput->code = 0;
+  learnIndex++;
 }
 
 void sendCode(ControlCode *code) {
@@ -159,17 +198,9 @@ void sendCode(ControlCode *code) {
 }
 
 void handleReceivedTinyIRData(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
-  digitalWrite(LED_BUILTIN, HIGH);
-  digitalWrite(LED_BUILTIN, LOW);
-
   if (!learning) {
     handleRemoteCommand(aAddress, aCommand, isRepeat);
   } else {
-#ifdef SERIAL_LOGGING
-    Serial.print("Learned: ");
-    Serial.print(aAddress, HEX);
-    Serial.println(aCommand, HEX);
-#endif
     learnRemoteCommand(aAddress, aCommand, isRepeat);
   }
 }
@@ -190,7 +221,30 @@ void handleRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
 }
 
 void learnRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
-  if (learningInput->address != aAddress && learningInput->code != aCommand) {
+  if (isRepeat) return;
+  if (aAddress == lastLearnedInput->address && aCommand == lastLearnedInput->code) return;
+  if (learningInput->address) return;
+
+  Serial.println(lastLearnedInput->address, HEX);
+  Serial.println(lastLearnedInput->code, HEX);
+
+
+  uint32_t compare = aAddress;
+  compare = compare << 8;
+  compare += aCommand;
+  uint32_t lastInput = lastLearnedInput->address;
+  lastInput = lastInput << 8;
+  lastInput += lastLearnedInput->code;
+
+  RemoteKey incoming = { aAddress, aCommand, 0 };
+
+  Serial.print("compare: ");
+  Serial.print(compare, HEX);
+  Serial.print(" & ");
+  Serial.println(lastInput, HEX);
+
+  if (!equals(incoming, *lastLearnedInput)) {
+    //  if (compare != lastInput) {
     learningInput->address = aAddress;
     learningInput->code = aCommand;
   }
