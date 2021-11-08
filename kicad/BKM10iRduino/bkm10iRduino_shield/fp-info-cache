@@ -1,4 +1,4 @@
-6539447929068
+8177268283068
 bkm10rduino
 6_PIN_HEADER
 
@@ -6,6 +6,13 @@ bkm10rduino
 0
 6
 6
+bkm10rduino
+Arduino_Nano
+Arduino Nano, http://www.mouser.com/pdfdocs/Gravitech_Arduino_Nano3_0.pdf
+Arduino Nano
+0
+30
+30
 bkm10rduino
 SW_PUSH_6mm_H5mm
 tactile push button, 6x6mm e.g. PHAP33xx series, height=5mm

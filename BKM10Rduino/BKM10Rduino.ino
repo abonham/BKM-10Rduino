@@ -154,17 +154,20 @@ void updateState() {
 #endif
 
     timers->lastPoll = millis();
-    //    powerSave();
+    powerSave();
   }
 }
 
 //MARK:- BKM-10R TX/RX methods
 void processControlMessages() {
-  if (Serial.find("ILE", 3)) {
-    uint8_t ledBank[3];
-    Serial.readBytes(ledBank, 3);
-    uint8_t message[3];
-    Serial.readBytes(message, 3);
+  if (Serial.available() > 0) {
+    char bank[3];
+    Serial.readBytes(bank, 3);
+    byte kDown = Serial.read();
+    ControlCode ledStatus = { Serial.read(), Serial.read() };
+    if (bank == "ILE") {
+
+    }
   }
 }
 
