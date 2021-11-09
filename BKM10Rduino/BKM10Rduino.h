@@ -1,9 +1,9 @@
 #include <Arduino.h>
 
 #define COMMANDS_SIZE 32
-#define IR_INPUT_PIN        7
+#define IR_INPUT_PIN        3
 #define TX_ENABLE_PIN       2
-#define RX_ENABLE_LOW_PIN   3
+#define RX_ENABLE_LOW_PIN   6 
 #define LEARN_ENABLE_PIN    5
 
 #include "TinyIRReceiver.hpp"
