@@ -2,8 +2,8 @@
 
 #define COMMANDS_SIZE 32
 #define IR_INPUT_PIN        3
-#define TX_ENABLE_PIN       2
-#define RX_ENABLE_LOW_PIN   6 
+#define TX_ENABLE_PIN       6
+#define RX_ENABLE_LOW_PIN   4
 #define LEARN_ENABLE_PIN    5
 
 #include "TinyIRReceiver.hpp"
@@ -16,7 +16,6 @@
 #ifdef U8X8_HAVE_HW_I2C
 #include <Wire.h>
 #endif
-
 
 /*
  * Holds any timestamps required for time based events
@@ -58,6 +57,10 @@ struct ControlCode {
   byte group;
   byte code;
 } controlCode;
+
+struct RotaryEncoder {
+  byte encoderId;
+};
 
 struct Command {
   struct ControlCode cmd;

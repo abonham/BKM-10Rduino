@@ -1,7 +1,7 @@
 #define LEARN_TIMEOUT 3000
 #define SLEEP_TIMER 60000
 #define CIRCULAR_BUFFER_INT_SAFE
-#define SERIAL_LOGGING 1
+#define SERIAL_LOGGING
 #define __ASSERT_USE_STDERR
 #define POLL_RATE 33
 
@@ -10,7 +10,7 @@
 #define SMALL_FONT u8x8_font_chroma48medium8_r
 
 //#define USE_PHYSICAL_BUTTONS 1
-//#define FULL_DUPLEX 1
+#define FULL_DUPLEX
 
 #include "BKM10Rduino.h"
 #include <CircularBuffer.h>
@@ -31,16 +31,21 @@ struct RemoteKey *lastLearnedInput = malloc(sizeof(RemoteKey));
 
 struct Timers * timers = malloc(sizeof(Timers));
 bool displaySleep = false;
+bool rs485sleep = false;
 
 //subscript accessor for RemoteKeys in EEPROM
 StoredKey eeprom;
 
 U8X8_SH1106_128X64_NONAME_4W_HW_SPI u8x8(/* cs=*/ 10, /* dc=*/ 9, /* reset=*/ 8);
 
-#define DEBUG 1
-#define DEBUG_BUTTON A7
-
 void setup() {
+  u8x8.begin();
+  u8x8.setPowerSave(0);
+  u8x8.setFlipMode(1);
+  u8x8.setFont(SMALL_FONT);
+  showName();
+  u8x8.setCursor(0,7);
+  u8x8.print(F(" starting up..."));
   Serial.begin(38400);
 
   *learningInput = { 0, 0 };
@@ -53,6 +58,7 @@ void setup() {
       EEPROM.put(i * sizeof(RemoteKey), k);
     }
     setROMInitFlag(true);
+    learning = true;
   }
 
   initPCIInterruptForTinyReceiver();
@@ -69,22 +75,18 @@ void setup() {
   pinMode(LEARN_ENABLE_PIN, INPUT_PULLUP);
 
   pinMode(TX_ENABLE_PIN, OUTPUT);
-  digitalWrite(TX_ENABLE_PIN, HIGH);
+  pinMode(RX_ENABLE_LOW_PIN, OUTPUT);
 #ifdef FULL_DUPLEX
-  pinMode(RX_ENABLE_PIN, OUTPUT);
-  digitalWrite(RX_ENABLE_PIN, HIGH);
+  digitalWrite(TX_ENABLE_PIN, LOW);
+  digitalWrite(TX_ENABLE_PIN, LOW);
+#else
+  digitalWrite(RX_ENABLE_LOW_PIN, HIGH);
+  digitalWrite(TX_ENABLE_PIN, HIGH);
 #endif
-
 
   timers->lastPoll = millis();
   timers->learnHold = millis();
   timers->lastInput = millis();
-
-  u8x8.begin();
-  u8x8.setPowerSave(0);
-  u8x8.setFlipMode(1);
-  u8x8.setFont(SMALL_FONT);
-  showName();
 
 #ifdef SERIAL_LOGGING
   Serial.println("All keys saved in eeprom:\n");
@@ -99,17 +101,19 @@ void setup() {
     Serial.println(k.id, DEC);
   }
 #endif
+  u8x8.clearLine(7);
 }
 
 void showName() {
   u8x8.clear();
   u8x8.home();
-  u8x8.setCursor(2, 4);
+  u8x8.setCursor(1, 4);
   u8x8.print(F("BKM-10iRduino"));
 }
 
 void loop() {
   updateState();
+  processControlMessages();
   processCommandBuffer();
 }
 
@@ -160,14 +164,22 @@ void updateState() {
 
 //MARK:- BKM-10R TX/RX methods
 void processControlMessages() {
-  if (Serial.available() > 0) {
+  if (Serial.available()) {
+    Serial.println("\ninput\n");
     char bank[3];
     Serial.readBytes(bank, 3);
     byte kDown = Serial.read();
-    ControlCode ledStatus = { Serial.read(), Serial.read() };
-    if (bank == "ILE") {
-
-    }
+    byte group = Serial.read();
+    byte mask = Serial.read();
+    u8x8.setFont(SMALL_FONT);
+    u8x8.setCursor(0, 8);
+    u8x8.print(bank);
+    u8x8.print(" ");
+    u8x8.print(kDown, HEX);
+    u8x8.print(" ");
+    u8x8.print(group, HEX);
+    u8x8.print(" ");
+    u8x8.print(mask, HEX);
   }
 }
 
@@ -198,8 +210,14 @@ void processCommandBuffer() {
 */
 void sendCode(ControlCode *code) {
 #ifdef FULL_DUPLEX
-  digitalWrite(RX_ENABLE_PIN, HIGH);
+  digitalWrite(RX_ENABLE_LOW_PIN, HIGH);
+  digitalWrite(TX_ENABLE_PIN, HIGH);
 #endif
+
+  if (rs485sleep) {
+    delay(1); //max485e has a 800us max wake up time
+    rs485sleep = false;
+  }
 
   Serial.write(ISWBank);
   Serial.write(keydown);
@@ -210,8 +228,8 @@ void sendCode(ControlCode *code) {
   //this is bad, should find a way to check the tx buffer properly
   //TXCn interupt look ok on surface but is far to complex to use
   //for this simple requirement.
-  delay(50);
-  digitalWrite(RX_ENABLE_PIN, LOW);
+  digitalWrite(RX_ENABLE_LOW_PIN, LOW);
+  digitalWrite(TX_ENABLE_PIN, LOW);
 #endif
 }
 
@@ -248,6 +266,10 @@ void handleRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
       return;
     }
   }
+  Serial.print("\nunknown key: ");
+  Serial.print(aAddress, HEX);
+  Serial.print(" ");
+  Serial.println(aCommand, HEX);
 }
 
 //MARK:- Learn remote control
@@ -400,12 +422,25 @@ void dumpNames() {
   }
 }
 
+void idleRS485(bool willIdle) {
+  if (willIdle) {
+    digitalWrite(RX_ENABLE_LOW_PIN, HIGH);
+    digitalWrite(TX_ENABLE_PIN, LOW);
+    rs485sleep = true;
+  } else {
+    digitalWrite(RX_ENABLE_LOW_PIN, LOW);
+    rs485sleep = false;
+  }
+}
+
 void powerSave() {
   if ((millis() - timers->lastInput > SLEEP_TIMER) && !displaySleep) {
     cancelLearning();
     u8x8.setPowerSave(1);
     displaySleep = true;
+    idleRS485(true);
   } else if ((millis() - timers->lastInput < SLEEP_TIMER) && displaySleep) {
+    digitalWrite(RX_ENABLE_LOW_PIN, LOW);
     u8x8.setPowerSave(0);
     showName();
     displaySleep = false;
