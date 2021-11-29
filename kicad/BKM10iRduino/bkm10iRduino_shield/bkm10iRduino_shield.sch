@@ -39,11 +39,11 @@ Text GLabel 6200 3900 2    50   Output ~ 0
 IR_OUT
 Text GLabel 6850 2550 0    50   Input ~ 0
 IR_OUT
-Text GLabel 3550 4000 0    50   Input ~ 0
+Text GLabel 3600 5250 0    50   Input ~ 0
 RS485_TX
 Text GLabel 6850 1750 0    50   Output ~ 0
 RS485_TX
-Text GLabel 3550 3900 0    50   Input ~ 0
+Text GLabel 3600 5150 0    50   Input ~ 0
 RS485_TX_ENABLE
 Text GLabel 6850 2150 0    50   Output ~ 0
 RS485_TX_ENABLE
@@ -130,11 +130,11 @@ Text GLabel 5850 1550 2    50   Input ~ 0
 LEARN_BUTTON_IN
 Text GLabel 6850 2250 0    50   Input ~ 0
 LEARN_BUTTON_IN
-Text GLabel 3550 3800 0    50   Input ~ 0
+Text GLabel 3600 5050 0    50   Input ~ 0
 RS485_RX_ENABLE
 Text GLabel 6850 2050 0    50   Output ~ 0
 RS485_RX_ENABLE
-Text GLabel 3550 3700 0    50   Output ~ 0
+Text GLabel 3600 4950 0    50   Output ~ 0
 RS485_RX
 Text GLabel 6850 1850 0    50   Input ~ 0
 RS485_RX
@@ -210,7 +210,7 @@ U 1 1 618968F9
 P 5250 2450
 F 0 "C1" H 5158 2404 50  0000 R CNN
 F 1 "C_Small" H 5158 2495 50  0000 R CNN
-F 2 "Capacitor_SMD:C_1812_4532Metric_Pad1.57x3.40mm_HandSolder" H 5250 2450 50  0001 C CNN
+F 2 "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder" H 5250 2450 50  0001 C CNN
 F 3 "~" H 5250 2450 50  0001 C CNN
 	1    5250 2450
 	-1   0    0    1   
@@ -240,12 +240,12 @@ Wire Wire Line
 $Comp
 L Device:R R1
 U 1 1 618A676D
-P 4650 4350
-F 0 "R1" H 4720 4396 50  0000 L CNN
-F 1 "R" H 4720 4305 50  0000 L CNN
-F 2 "Resistor_SMD:R_1206_3216Metric_Pad1.30x1.75mm_HandSolder" V 4580 4350 50  0001 C CNN
-F 3 "~" H 4650 4350 50  0001 C CNN
-	1    4650 4350
+P 4550 5600
+F 0 "R1" H 4620 5646 50  0000 L CNN
+F 1 "R" H 4620 5555 50  0000 L CNN
+F 2 "Resistor_SMD:R_1206_3216Metric_Pad1.30x1.75mm_HandSolder" V 4480 5600 50  0001 C CNN
+F 3 "~" H 4550 5600 50  0001 C CNN
+	1    4550 5600
 	0    1    1    0   
 $EndComp
 Text GLabel 7200 4200 1    50   Input ~ 0
@@ -293,58 +293,58 @@ F 3 "" H 5250 2350 50  0001 C CNN
 	1    5250 2350
 	-1   0    0    1   
 $EndComp
-Text GLabel 4550 3900 2    50   BiDi ~ 0
+Text GLabel 4450 5150 2    50   BiDi ~ 0
 AB+
-Text GLabel 4550 3800 2    50   BiDi ~ 0
+Text GLabel 4450 5050 2    50   BiDi ~ 0
 AB-
-Text GLabel 3800 2250 2    50   BiDi ~ 0
+Text GLabel 3800 2450 2    50   BiDi ~ 0
 AB+
-Text GLabel 3800 2150 2    50   BiDi ~ 0
+Text GLabel 3800 2350 2    50   BiDi ~ 0
 AB-
 Wire Wire Line
 	3800 2650 3900 2650
 Connection ~ 3900 2650
 Wire Wire Line
 	3900 2650 3950 2650
-Text GLabel 4800 4100 2    50   BiDi ~ 0
+Text GLabel 4700 5350 2    50   BiDi ~ 0
 YZ+
-Text GLabel 4800 4000 2    50   BiDi ~ 0
+Text GLabel 4700 5250 2    50   BiDi ~ 0
 YZ-
-Text GLabel 3800 2350 2    50   BiDi ~ 0
+Text GLabel 3800 2150 2    50   BiDi ~ 0
 YZ+
-Text GLabel 3800 2450 2    50   BiDi ~ 0
+Text GLabel 3800 2250 2    50   BiDi ~ 0
 YZ-
 $Comp
 L power:VCC #PWR01
 U 1 1 618B7465
-P 4550 3450
-F 0 "#PWR01" H 4550 3300 50  0001 C CNN
-F 1 "VCC" V 4565 3578 50  0000 L CNN
-F 2 "" H 4550 3450 50  0001 C CNN
-F 3 "" H 4550 3450 50  0001 C CNN
-	1    4550 3450
+P 4450 4600
+F 0 "#PWR01" H 4450 4450 50  0001 C CNN
+F 1 "VCC" V 4465 4728 50  0000 L CNN
+F 2 "" H 4450 4600 50  0001 C CNN
+F 3 "" H 4450 4600 50  0001 C CNN
+	1    4450 4600
 	1    0    0    -1  
 $EndComp
 $Comp
 L Device:C_Small C4
 U 1 1 618B84EF
-P 4700 3550
-F 0 "C4" H 4608 3504 50  0000 R CNN
-F 1 "C_Small" H 4608 3595 50  0000 R CNN
-F 2 "Capacitor_SMD:C_1812_4532Metric_Pad1.57x3.40mm_HandSolder" H 4700 3550 50  0001 C CNN
-F 3 "~" H 4700 3550 50  0001 C CNN
-	1    4700 3550
+P 4600 4700
+F 0 "C4" H 4508 4654 50  0000 R CNN
+F 1 "C_Small" H 4508 4745 50  0000 R CNN
+F 2 "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder" H 4600 4700 50  0001 C CNN
+F 3 "~" H 4600 4700 50  0001 C CNN
+	1    4600 4700
 	-1   0    0    1   
 $EndComp
 $Comp
 L power:GND #PWR02
 U 1 1 618B914E
-P 3550 4100
-F 0 "#PWR02" H 3550 3850 50  0001 C CNN
-F 1 "GND" V 3555 3972 50  0000 R CNN
-F 2 "" H 3550 4100 50  0001 C CNN
-F 3 "" H 3550 4100 50  0001 C CNN
-	1    3550 4100
+P 3600 5450
+F 0 "#PWR02" H 3600 5200 50  0001 C CNN
+F 1 "GND" V 3605 5322 50  0000 R CNN
+F 2 "" H 3600 5450 50  0001 C CNN
+F 3 "" H 3600 5450 50  0001 C CNN
+	1    3600 5450
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -353,7 +353,7 @@ U 1 1 618BCDCE
 P 3900 2850
 F 0 "C2" H 3808 2804 50  0000 R CNN
 F 1 "C_Small" H 3808 2895 50  0000 R CNN
-F 2 "Capacitor_SMD:C_1812_4532Metric_Pad1.57x3.40mm_HandSolder" H 3900 2850 50  0001 C CNN
+F 2 "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder" H 3900 2850 50  0001 C CNN
 F 3 "~" H 3900 2850 50  0001 C CNN
 	1    3900 2850
 	-1   0    0    1   
@@ -364,7 +364,7 @@ U 1 1 618BE106
 P 6350 3550
 F 0 "C3" H 6258 3504 50  0000 R CNN
 F 1 "C_Small" H 6258 3595 50  0000 R CNN
-F 2 "Capacitor_SMD:C_1812_4532Metric_Pad1.57x3.40mm_HandSolder" H 6350 3550 50  0001 C CNN
+F 2 "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder" H 6350 3550 50  0001 C CNN
 F 3 "~" H 6350 3550 50  0001 C CNN
 	1    6350 3550
 	-1   0    0    1   
@@ -380,19 +380,19 @@ Wire Wire Line
 	3950 2750 3950 2650
 Connection ~ 3950 2650
 Wire Wire Line
-	4550 3450 4550 3700
+	4450 4600 4450 4850
 Wire Wire Line
-	4550 3450 4700 3450
-Connection ~ 4550 3450
+	4450 4600 4600 4600
+Connection ~ 4450 4600
 $Comp
 L power:GND #PWR03
 U 1 1 618B7AD9
-P 4700 3650
-F 0 "#PWR03" H 4700 3400 50  0001 C CNN
-F 1 "GND" V 4705 3522 50  0000 R CNN
-F 2 "" H 4700 3650 50  0001 C CNN
-F 3 "" H 4700 3650 50  0001 C CNN
-	1    4700 3650
+P 4600 4800
+F 0 "#PWR03" H 4600 4550 50  0001 C CNN
+F 1 "GND" V 4605 4672 50  0000 R CNN
+F 2 "" H 4600 4800 50  0001 C CNN
+F 3 "" H 4600 4800 50  0001 C CNN
+	1    4600 4800
 	0    -1   -1   0   
 $EndComp
 $Comp
@@ -411,43 +411,65 @@ Wire Wire Line
 Wire Wire Line
 	6200 3450 6200 3700
 Connection ~ 6200 3450
+Wire Wire Line
+	4700 5250 4500 5250
+Wire Wire Line
+	4700 5350 4650 5350
+Wire Wire Line
+	4700 5600 4700 5500
+Wire Wire Line
+	4700 5500 4650 5500
+Wire Wire Line
+	4650 5500 4650 5350
+Connection ~ 4650 5350
+Wire Wire Line
+	4650 5350 4450 5350
+Wire Wire Line
+	4400 5600 4400 5500
+Wire Wire Line
+	4400 5500 4500 5500
+Wire Wire Line
+	4500 5500 4500 5250
+Connection ~ 4500 5250
+Wire Wire Line
+	4500 5250 4450 5250
 $Comp
-L SamacSys_Parts:MAX22508EASA+ IC1
-U 1 1 618B1646
-P 3550 3700
-F 0 "IC1" H 4050 3965 50  0000 C CNN
-F 1 "MAX22508EASA+" H 4050 3874 50  0000 C CNN
-F 2 "SOP50P490X110-10N" H 4400 3800 50  0001 L CNN
-F 3 "" H 4400 3700 50  0001 L CNN
-F 4 "RS-422/RS-485 Interface IC" H 4400 3600 50  0001 L CNN "Description"
-F 5 "1.1" H 4400 3500 50  0001 L CNN "Height"
-F 6 "" H 4400 3400 50  0001 L CNN "Mouser Part Number"
-F 7 "" H 4400 3300 50  0001 L CNN "Mouser Price/Stock"
-F 8 "Maxim Integrated" H 4400 3200 50  0001 L CNN "Manufacturer_Name"
-F 9 "MAX22508EASA+" H 4400 3100 50  0001 L CNN "Manufacturer_Part_Number"
-	1    3550 3700
+L bkm10:ADM3063EARZ-ND U2
+U 1 1 619EE6CE
+P 4000 4600
+F 0 "U2" H 4025 4615 50  0000 C CNN
+F 1 "ADM3063EARZ-ND" H 4025 4524 50  0000 C CNN
+F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 4000 4600 50  0001 C CNN
+F 3 "https://www.analog.com/media/en/technical-documentation/data-sheets/ADM3061E-3062E-3063E-3064E-3065E-3066E-3067E-3068E.pdf" H 4000 4600 50  0001 C CNN
+	1    4000 4600
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	4800 4000 4600 4000
+	4450 4850 4450 4950
+Connection ~ 4450 4850
 Wire Wire Line
-	4800 4100 4750 4100
-Wire Wire Line
-	4800 4350 4800 4250
-Wire Wire Line
-	4800 4250 4750 4250
-Wire Wire Line
-	4750 4250 4750 4100
-Connection ~ 4750 4100
-Wire Wire Line
-	4750 4100 4550 4100
-Wire Wire Line
-	4500 4350 4500 4250
-Wire Wire Line
-	4500 4250 4600 4250
-Wire Wire Line
-	4600 4250 4600 4000
-Connection ~ 4600 4000
-Wire Wire Line
-	4600 4000 4550 4000
+	3600 5350 3600 5450
+Connection ~ 3600 5450
+$Comp
+L Mechanical:MountingHole H1
+U 1 1 61A0BC8D
+P 4900 2250
+F 0 "H1" H 5000 2250 50  0000 L CNN
+F 1 "MountingHole" H 5000 2208 50  0001 L CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3" H 4900 2250 50  0001 C CNN
+F 3 "~" H 4900 2250 50  0001 C CNN
+	1    4900 2250
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:MountingHole H2
+U 1 1 61A0E14E
+P 5500 2250
+F 0 "H2" H 5600 2250 50  0000 L CNN
+F 1 "MountingHole" H 5600 2208 50  0001 L CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3" H 5500 2250 50  0001 C CNN
+F 3 "~" H 5500 2250 50  0001 C CNN
+	1    5500 2250
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC

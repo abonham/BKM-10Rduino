@@ -1,7 +1,7 @@
 #define LEARN_TIMEOUT 3000
 #define SLEEP_TIMER 60000
 #define CIRCULAR_BUFFER_INT_SAFE
-#define SERIAL_LOGGING
+//#define SERIAL_LOGGING
 #define __ASSERT_USE_STDERR
 #define POLL_RATE 33
 
@@ -44,7 +44,7 @@ void setup() {
   u8x8.setFlipMode(1);
   u8x8.setFont(SMALL_FONT);
   showName();
-  u8x8.setCursor(0,7);
+  u8x8.setCursor(0, 7);
   u8x8.print(F(" starting up..."));
   Serial.begin(38400);
 
@@ -76,13 +76,9 @@ void setup() {
 
   pinMode(TX_ENABLE_PIN, OUTPUT);
   pinMode(RX_ENABLE_LOW_PIN, OUTPUT);
-#ifdef FULL_DUPLEX
-  digitalWrite(TX_ENABLE_PIN, LOW);
-  digitalWrite(TX_ENABLE_PIN, LOW);
-#else
-  digitalWrite(RX_ENABLE_LOW_PIN, HIGH);
+
   digitalWrite(TX_ENABLE_PIN, HIGH);
-#endif
+  digitalWrite(RX_ENABLE_LOW_PIN, LOW);
 
   timers->lastPoll = millis();
   timers->learnHold = millis();
@@ -125,6 +121,9 @@ void updateState() {
       u8x8.drawString(0, 3, "press key:");
       char buffer[18] = {};
       strcpy_P(buffer, (char*)pgm_read_word(&(names[learnIndex])));
+#ifdef SERIAL_LOGGING
+      Serial.println(buffer);
+#endif
       int l = strlen(buffer);
 
       u8x8.setInverseFont(1);
@@ -165,7 +164,10 @@ void updateState() {
 //MARK:- BKM-10R TX/RX methods
 void processControlMessages() {
   if (Serial.available()) {
+
+#ifdef SERIAL_LOGGING
     Serial.println("\ninput\n");
+#endif
     char bank[3];
     Serial.readBytes(bank, 3);
     byte kDown = Serial.read();
@@ -184,21 +186,17 @@ void processControlMessages() {
 }
 
 void processCommandBuffer() {
-#ifdef FULL_DUPLEX
   //Don't send if currently receiving
   if (!Serial.available()) {
-#endif
     while (!commandBuffer.isEmpty()) {
       ControlCode *code = (ControlCode*)commandBuffer.shift();
       sendCode(code);
     }
-#ifdef FULL_DUPLEX
   } else {
 #ifdef SERIAL_LOGGING
     Serial.println("has serial waiting");
 #endif
   }
-#endif
 }
 
 /*
@@ -209,28 +207,10 @@ void processCommandBuffer() {
    This should be fine as it's only ever sending 4 bytes at a time.
 */
 void sendCode(ControlCode *code) {
-#ifdef FULL_DUPLEX
-  digitalWrite(RX_ENABLE_LOW_PIN, HIGH);
-  digitalWrite(TX_ENABLE_PIN, HIGH);
-#endif
-
-  if (rs485sleep) {
-    delay(1); //max485e has a 800us max wake up time
-    rs485sleep = false;
-  }
-
   Serial.write(ISWBank);
   Serial.write(keydown);
   Serial.write(code->group);
   Serial.write(code->code);
-
-#ifdef FULL_DUPLEX
-  //this is bad, should find a way to check the tx buffer properly
-  //TXCn interupt look ok on surface but is far to complex to use
-  //for this simple requirement.
-  digitalWrite(RX_ENABLE_LOW_PIN, LOW);
-  digitalWrite(TX_ENABLE_PIN, LOW);
-#endif
 }
 
 //MARK:- IR receiver interupt handlers
@@ -266,10 +246,12 @@ void handleRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
       return;
     }
   }
+#ifdef SERIAL_LOGGING
   Serial.print("\nunknown key: ");
   Serial.print(aAddress, HEX);
   Serial.print(" ");
   Serial.println(aCommand, HEX);
+#endif
 }
 
 //MARK:- Learn remote control
@@ -438,9 +420,9 @@ void powerSave() {
     cancelLearning();
     u8x8.setPowerSave(1);
     displaySleep = true;
-    idleRS485(true);
+    //    idleRS485(true);
   } else if ((millis() - timers->lastInput < SLEEP_TIMER) && displaySleep) {
-    digitalWrite(RX_ENABLE_LOW_PIN, LOW);
+    //    digitalWrite(RX_ENABLE_LOW_PIN, LOW);
     u8x8.setPowerSave(0);
     showName();
     displaySleep = false;

@@ -1,4 +1,4 @@
-19227533009076098
+19230806199398814
 Battery
 BatteryHolder_Bulgin_BX0036_1xC
 Bulgin Battery Holder, BX0036, Battery Type C (https://www.bulgin.com/products/pub/media/bulgin/data/Battery_holders.pdf)
@@ -74395,6 +74395,13 @@ WiFi IEEE802.11 b/g/n
 0
 44
 44
+RSInput
+JOYCON
+
+
+0
+5
+5
 Relay_SMD
 Relay_DPDT_AXICOM_IMSeries_JLeg
 http://www.te.com/commerce/DocumentDelivery/DDEController?Action=showdoc&DocId=Specification+Or+Standard%7F108-98001%7FW5%7Fpdf%7FEnglish%7FENG_SS_108-98001_W5.pdf
@@ -83089,3 +83096,10 @@ TLL_RS485
 0
 8
 8
+pi_pico
+SC0915
+
+
+0
+53
+53
