@@ -298,9 +298,9 @@ AB+
 Text GLabel 4450 5050 2    50   BiDi ~ 0
 AB-
 Text GLabel 3800 2450 2    50   BiDi ~ 0
-AB+
-Text GLabel 3800 2350 2    50   BiDi ~ 0
 AB-
+Text GLabel 3800 2350 2    50   BiDi ~ 0
+AB+
 Wire Wire Line
 	3800 2650 3900 2650
 Connection ~ 3900 2650
@@ -311,9 +311,9 @@ YZ+
 Text GLabel 4700 5250 2    50   BiDi ~ 0
 YZ-
 Text GLabel 3800 2150 2    50   BiDi ~ 0
-YZ+
-Text GLabel 3800 2250 2    50   BiDi ~ 0
 YZ-
+Text GLabel 3800 2250 2    50   BiDi ~ 0
+YZ+
 $Comp
 L power:VCC #PWR01
 U 1 1 618B7465

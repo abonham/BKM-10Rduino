@@ -7,20 +7,20 @@
       "Application": "Pcbnew",
       "Version":     "(5.1.10)-1"
     },
-    "CreationDate":  "2021-12-02T15:39:48+11:00"
+    "CreationDate":  "2021-12-02T15:45:15+11:00"
   },
   "GeneralSpecs":
   {
     "ProjectId":
     {
-      "Name": "bkm10iRduino_shield",
-      "GUID": "626b6d31-3069-4526-9475-696e6f5f7368",
+      "Name": "BKM-10Rp2040",
+      "GUID": "424b4d2d-3130-4527-9032-3034302e6b69",
       "Revision": "rev?"
     },
     "Size":
     {
       "X": 34.390,
-      "Y": 73.760
+      "Y": 82.650
     },
     "LayerNumber": 2,
     "BoardThickness":  1.600
@@ -40,47 +40,47 @@
   "FilesAttributes":
   [
     {
-      "Path":  "bkm10iRduino_shield-F_Cu.gtl",
+      "Path":  "BKM-10Rp2040-F_Cu.gbr",
       "FileFunction":  "Copper,L1,Top",
       "FilePolarity":  "Positive"
     },
     {
-      "Path":  "bkm10iRduino_shield-B_Cu.gbl",
+      "Path":  "BKM-10Rp2040-B_Cu.gbr",
       "FileFunction":  "Copper,L2,Bot",
       "FilePolarity":  "Positive"
     },
     {
-      "Path":  "bkm10iRduino_shield-F_Paste.gtp",
+      "Path":  "BKM-10Rp2040-F_Paste.gbr",
       "FileFunction":  "SolderPaste,Top",
       "FilePolarity":  "Positive"
     },
     {
-      "Path":  "bkm10iRduino_shield-B_Paste.gbp",
+      "Path":  "BKM-10Rp2040-B_Paste.gbr",
       "FileFunction":  "SolderPaste,Bot",
       "FilePolarity":  "Positive"
     },
     {
-      "Path":  "bkm10iRduino_shield-F_SilkS.gto",
+      "Path":  "BKM-10Rp2040-F_SilkS.gbr",
       "FileFunction":  "Legend,Top",
       "FilePolarity":  "Positive"
     },
     {
-      "Path":  "bkm10iRduino_shield-B_SilkS.gbo",
+      "Path":  "BKM-10Rp2040-B_SilkS.gbr",
       "FileFunction":  "Legend,Bot",
       "FilePolarity":  "Positive"
     },
     {
-      "Path":  "bkm10iRduino_shield-F_Mask.gts",
+      "Path":  "BKM-10Rp2040-F_Mask.gbr",
       "FileFunction":  "SolderMask,Top",
       "FilePolarity":  "Negative"
     },
     {
-      "Path":  "bkm10iRduino_shield-B_Mask.gbs",
+      "Path":  "BKM-10Rp2040-B_Mask.gbr",
       "FileFunction":  "SolderMask,Bot",
       "FilePolarity":  "Negative"
     },
     {
-      "Path":  "bkm10iRduino_shield-Edge_Cuts.gm1",
+      "Path":  "BKM-10Rp2040-Edge_Cuts.gbr",
       "FileFunction":  "Profile",
       "FilePolarity":  "Positive"
     }
