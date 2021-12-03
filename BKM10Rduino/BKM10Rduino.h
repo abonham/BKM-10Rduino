@@ -2,9 +2,9 @@
 
 #define COMMANDS_SIZE 32
 #define IR_INPUT_PIN        7
-#define TX_ENABLE_PIN       4
+#define TX_ENABLE_PIN       3
 #define RX_ENABLE_LOW_PIN   2
-#define LEARN_ENABLE_PIN    3
+#define LEARN_ENABLE_PIN    4
 
 #include "TinyIRReceiver.hpp"
 #include <EEPROM.h>
