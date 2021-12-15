@@ -4,6 +4,7 @@
 #define SERIAL_LOGGING
 #define __ASSERT_USE_STDERR
 #define POLL_RATE 33
+#define I2C_DISPLAY
 
 #define LARGE_FONT u8x8_font_px437wyse700b_2x2_f
 #define MEDIUM_FONT  u8x8_font_7x14_1x2_f
@@ -20,35 +21,38 @@
 CircularBuffer<void*, 4> commandBuffer;
 
 #ifdef USE_PHYSICAL_BUTTONS
-int buttonState = 0;
+volatile int buttonState = 0;
 #endif
 
-bool learning = false;
-bool isHoldingLearnButton = false;
-int learnIndex = 0;
+volatile bool learning = false;
+volatile bool isHoldingLearnButton = false;
+volatile int learnIndex = 0;
 struct RemoteKey *learningInput = malloc(sizeof(RemoteKey));
 struct RemoteKey *lastLearnedInput = malloc(sizeof(RemoteKey));
 
 struct Timers * timers = malloc(sizeof(Timers));
-bool displaySleep = false;
-bool rs485sleep = false;
+volatile bool displaySleep = false;
+volatile bool rs485sleep = false;
+volatile uint16_t leds = 0;
+volatile enum selectedBank bank = none;
 
 //subscript accessor for RemoteKeys in EEPROM
 StoredKey eeprom;
 
+#ifdef I2C_DISPLAY
+U8X8_SSD1306_128X64_NONAME_SW_I2C  u8x8(9, 10, U8X8_PIN_NONE);
+#else
 //U8X8_SH1106_128X64_NONAME_4W_HW_SPI u8x8(/* cs=*/ 9, /* dc=*/ 10, /* reset=*/ 12);
 U8X8_SH1106_128X64_NONAME_4W_SW_SPI u8x8(13, 11, /* cs=*/ 9, /* dc=*/ 10, /* reset=*/ 8);
+#endif
 
 void setup() {
-    pinMode(8, OUTPUT);
-    digitalWrite(8, HIGH);
-
   u8x8.begin();
   u8x8.setPowerSave(0);
   u8x8.setFlipMode(1);
   u8x8.setFont(SMALL_FONT);
   showName();
-  u8x8.setCursor(0,7);
+  u8x8.setCursor(0, 7);
   u8x8.print(F(" starting up..."));
   Serial.begin(38400);
 
@@ -84,7 +88,7 @@ void setup() {
   digitalWrite(TX_ENABLE_PIN, HIGH);
   digitalWrite(RX_ENABLE_LOW_PIN, LOW);
 #else
-  digitalWrite(RX_ENABLE_LOW_PIN, HIGH);
+  digitalWrite(RX_ENABLE_LOW_PIN, LOW);
   digitalWrite(TX_ENABLE_PIN, HIGH);
 #endif
 
@@ -93,6 +97,12 @@ void setup() {
   timers->lastInput = millis();
 
 #ifdef SERIAL_LOGGING
+  //  dumpEEPROM();
+#endif
+  u8x8.clearLine(7);
+}
+
+void dumpEEPROM() {
   Serial.println("All keys saved in eeprom:\n");
   for (int i = 0; i < COMMANDS_SIZE; i++) {
     RemoteKey k = eeprom[i];
@@ -104,8 +114,6 @@ void setup() {
     Serial.print(", id: ");
     Serial.println(k.id, DEC);
   }
-#endif
-  u8x8.clearLine(7);
 }
 
 void showName() {
@@ -166,43 +174,78 @@ void updateState() {
   }
 }
 
+int checkBank(byte* b) {
+  Serial.print(b[0], HEX);
+  Serial.print(b[1], HEX);
+  Serial.println(b[2], HEX);
+  Serial.println((char*)b);
+
+  if (strcmp(b, "ILE") == 0) {
+    return ILE;
+  }
+  else if (strcmp(b, "ISW") == 0) {
+    return ISW;
+  }
+  else if (strcmp(b, "IMT") == 0) {
+    return IMT;
+  }
+  else if (strcmp(b, "IEN") == 0) {
+    return IEN;
+  }
+  else if (strcmp(b, "ICC") == 0) {
+    return ICC;
+  }
+  else if ((unsigned char)b[0] == 0x44) {
+    Serial.print(F("Group: "));
+    Serial.println((unsigned char)b[1], HEX);
+    Serial.print(F("Mask: "));
+    Serial.println((unsigned char) b[2], HEX);
+    return DATA;
+  }
+  else {
+    return none;
+  }
+}
+
 //MARK:- BKM-10R TX/RX methods
 void processControlMessages() {
-  if (Serial.available()) {
-    Serial.println("\ninput\n");
-    char bank[3];
-    Serial.readBytes(bank, 3);
-    byte kDown = Serial.read();
-    byte group = Serial.read();
-    byte mask = Serial.read();
-    u8x8.setFont(SMALL_FONT);
-    u8x8.setCursor(0, 8);
-    u8x8.print(bank);
-    u8x8.print(" ");
-    u8x8.print(kDown, HEX);
-    u8x8.print(" ");
-    u8x8.print(group, HEX);
-    u8x8.print(" ");
-    u8x8.print(mask, HEX);
+  if (Serial.available() >= 3) {
+    byte bankIn[4];                  //extra char for null termination
+    Serial.readBytes(bankIn, 3);
+    bankIn[3] = '\0';
+    enum selectedBank packet = checkBank(bankIn);
+    if ((bank == ILE) && (packet == DATA)) {
+      Serial.println(F("In ILE Bank, process led status"));
+    } else {
+      bank = packet;
+    }
   }
 }
 
 void processCommandBuffer() {
-#ifdef FULL_DUPLEX
-  //Don't send if currently receiving
-  if (!Serial.available()) {
-#endif
-    while (!commandBuffer.isEmpty()) {
-      ControlCode *code = (ControlCode*)commandBuffer.shift();
-      sendCode(code);
-    }
-#ifdef FULL_DUPLEX
-  } else {
-#ifdef SERIAL_LOGGING
-    Serial.println("has serial waiting");
-#endif
+
+  while (!commandBuffer.isEmpty()) {
+    ControlCode *code = (ControlCode*)commandBuffer.shift();
+    sendCode(code);
   }
-#endif
+
+  //#ifdef FULL_DUPLEX
+  //  //Don't send if currently receiving
+  //  if (!Serial.available()) {
+  //#endif
+  //
+  //    while (!commandBuffer.isEmpty()) {
+  //      ControlCode *code = (ControlCode*)commandBuffer.shift();
+  //      sendCode(code);
+  //    }
+  //
+  //#ifdef FULL_DUPLEX
+  //  } else {
+  //#ifdef SERIAL_LOGGING
+  //    Serial.println("has serial waiting");
+  //#endif
+  //  }
+  //#endif
 }
 
 /*
@@ -213,10 +256,10 @@ void processCommandBuffer() {
    This should be fine as it's only ever sending 4 bytes at a time.
 */
 void sendCode(ControlCode *code) {
-#ifdef FULL_DUPLEX
-  digitalWrite(RX_ENABLE_LOW_PIN, HIGH);
-  digitalWrite(TX_ENABLE_PIN, HIGH);
-#endif
+  //#ifdef FULL_DUPLEX
+  //  digitalWrite(RX_ENABLE_LOW_PIN, HIGH);
+  //  digitalWrite(TX_ENABLE_PIN, HIGH);
+  //#endif
 
   if (rs485sleep) {
     delay(1); //max485e has a 800us max wake up time
@@ -228,13 +271,13 @@ void sendCode(ControlCode *code) {
   Serial.write(code->group);
   Serial.write(code->code);
 
-#ifdef FULL_DUPLEX
-  //this is bad, should find a way to check the tx buffer properly
-  //TXCn interupt look ok on surface but is far to complex to use
-  //for this simple requirement.
-  digitalWrite(RX_ENABLE_LOW_PIN, LOW);
-  digitalWrite(TX_ENABLE_PIN, LOW);
-#endif
+  //#ifdef FULL_DUPLEX
+  //  //this is bad, should find a way to check the tx buffer properly
+  //  //TXCn interupt look ok on surface but is far to complex to use
+  //  //for this simple requirement.
+  //  digitalWrite(RX_ENABLE_LOW_PIN, LOW);
+  //  digitalWrite(TX_ENABLE_PIN, LOW);
+  //#endif
 }
 
 //MARK:- IR receiver interupt handlers

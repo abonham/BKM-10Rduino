@@ -169,6 +169,10 @@ const char * const names[] PROGMEM = {
 #define BKM_CONTRAST  { 0x02, 0x01 } //CONTRAST MANUAL
 #define BKM_DEGAUSS   { 0x01, 0x20 } //DEGAUSS
 
+enum led{SHIFT, OVERSCAN, H_SYNC, V_SYNC, MONO, APT, COMB, F_1, F_2, SAFE, PHASE, CHROMA, BRIGHT, CONTRAST};
+enum selectedBank{ISW, ILE, IEN, IMT, ICC, DATA, none};
+enum serialState{BANK, KEYDOWN, GROUP, MASK};
+
 const struct Command commands[] = {
   { BKM_POWER, false, 0 },
   { BKM_MENU, false, 1},
