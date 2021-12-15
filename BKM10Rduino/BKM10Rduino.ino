@@ -1,16 +1,24 @@
 #define LEARN_TIMEOUT 3000
-#define SLEEP_TIMER 60000
+#define SLEEP_TIMER 300000
 #define CIRCULAR_BUFFER_INT_SAFE
+
+//Uncomment to enable output to serial monitor
+//Not recommended to enable while connected to BVM
 //#define SERIAL_LOGGING
+
 #define __ASSERT_USE_STDERR
-#define POLL_RATE 33
+#define POLL_RATE 16
+
+//Uncomment one of these if using display on HW pins
+//#define USE_HW_I2C
+//#define USE_HW_SPI
+
+//Uncomment if using I2C display instead of SPI
 #define I2C_DISPLAY
 
 #define LARGE_FONT u8x8_font_px437wyse700b_2x2_f
 #define MEDIUM_FONT  u8x8_font_7x14_1x2_f
 #define SMALL_FONT u8x8_font_chroma48medium8_r
-
-//#define USE_PHYSICAL_BUTTONS 1
 
 #include "BKM10Rduino.h"
 #include <CircularBuffer.h>
@@ -35,6 +43,8 @@ volatile bool rs485sleep = false;
 volatile uint16_t leds = 0;
 volatile enum selectedBank bank = none;
 
+volatile bool needsStatusUpdate = false;
+
 volatile int group2LEDMask = 0;
 volatile int group3LEDMask = 0;
 volatile int group4LEDMask = 0;
@@ -43,7 +53,7 @@ volatile int group4LEDMask = 0;
 StoredKey eeprom;
 
 #ifdef I2C_DISPLAY
-U8X8_SSD1306_128X64_NONAME_SW_I2C  u8x8(10, 9, U8X8_PIN_NONE);
+U8X8_SSD1306_128X64_NONAME_SW_I2C  u8x8(/*scl=*/10, /*sda=*/9, U8X8_PIN_NONE);
 #else
 //U8X8_SH1106_128X64_NONAME_4W_HW_SPI u8x8(/* cs=*/ 9, /* dc=*/ 10, /* reset=*/ 12);
 U8X8_SH1106_128X64_NONAME_4W_SW_SPI u8x8(13, 11, /* cs=*/ 9, /* dc=*/ 10, /* reset=*/ 8);
@@ -95,7 +105,7 @@ void setup() {
   timers->lastInput = millis();
 
 #ifdef SERIAL_LOGGING
-  //  dumpEEPROM();
+  dumpEEPROM();
 #endif
   u8x8.clearLine(7);
 }
@@ -119,6 +129,7 @@ void showName() {
   u8x8.home();
   u8x8.setCursor(1, 4);
   u8x8.print(F("BKM-10iRduino"));
+  Serial.write("ISW"); //request led status if BVM is already on
 }
 
 void loop() {
@@ -132,43 +143,38 @@ void updateState() {
     updateIsLearning();
 
     if (learning && (learnIndex < COMMANDS_SIZE)) {
-      u8x8.drawString(0, 3, "press key:");
-      char buffer[18] = {};
-      strcpy_P(buffer, (char*)pgm_read_word(&(names[learnIndex])));
-      int l = strlen(buffer);
-
-      u8x8.setInverseFont(1);
-      u8x8.setCursor(0, 5);
-      if (l <= 8) {
-        u8x8.setFont(LARGE_FONT);
-        for (int i = 0; i < (8 - strlen(buffer)) / 2; i++) {
-          u8x8.print(" ");
-        }
-        u8x8.print(buffer);
-        for (int i = 0; i <= (8 - strlen(buffer)) / 2; i++) {
-          u8x8.print(" ");
-        }
-      } else {
-        u8x8.setFont(MEDIUM_FONT);
-        u8x8.setCursor(0, 5);
-        u8x8.print(buffer);
-      }
-      u8x8.setFont(SMALL_FONT);
-      u8x8.setInverseFont(0);
+      displayLearningMessage();
     }
-
-#ifdef USE_PHYSICAL_BUTTONS
-    int previous = buttonState;
-    readButtons();
-
-    if (previous != buttonState) {
-      sendButtonCommand();
-    }
-#endif
 
     timers->lastPoll = millis();
-    //    powerSave();
+    powerSave();
   }
+}
+
+void displayLearningMessage() {
+  u8x8.drawString(0, 3, "press key:");
+  char buffer[18] = {};
+  strcpy_P(buffer, (char*)pgm_read_word(&(names[learnIndex])));
+  int l = strlen(buffer);
+
+  u8x8.setInverseFont(1);
+  u8x8.setCursor(0, 5);
+  if (l <= 8) {
+    u8x8.setFont(LARGE_FONT);
+    for (int i = 0; i < (8 - strlen(buffer)) / 2; i++) {
+      u8x8.print(" ");
+    }
+    u8x8.print(buffer);
+    for (int i = 0; i <= (8 - strlen(buffer)) / 2; i++) {
+      u8x8.print(" ");
+    }
+  } else {
+    u8x8.setFont(MEDIUM_FONT);
+    u8x8.setCursor(0, 5);
+    u8x8.print(buffer);
+  }
+  u8x8.setFont(SMALL_FONT);
+  u8x8.setInverseFont(0);
 }
 
 int checkBank(byte* b) {
@@ -211,6 +217,7 @@ int checkBank(byte* b) {
 //MARK:- BKM-10R TX/RX methods
 void processControlMessages() {
   if (Serial.available() >= 3) {
+    timers->lastInput = millis();
     byte incoming[4];                  //extra char for null termination
     Serial.readBytes(incoming, 3);
     incoming[3] = '\0';
@@ -218,12 +225,21 @@ void processControlMessages() {
     if ((bank == ILE) && (packet == DATA)) {
       switch (incoming[1]) {
         case 0x02:
+          if (group2LEDMask != incoming[2]) {
+            needsStatusUpdate = true;
+          }
           group2LEDMask = incoming[2];
           break;
         case 0x03:
+          if (group3LEDMask != incoming[2]) {
+            needsStatusUpdate = true;
+          }
           group3LEDMask = incoming[2];
           break;
         case 0x04:
+          if (group4LEDMask != incoming[2]) {
+            needsStatusUpdate = true;
+          }
           group4LEDMask = incoming[2];
           break;
         default:
@@ -235,7 +251,6 @@ void processControlMessages() {
       Serial.println(group3LEDMask, HEX);
       Serial.println(group4LEDMask, HEX);
 #endif
-      u8x8.clear();
       updateLEDS();
     } else {
       bank = packet;
@@ -244,51 +259,61 @@ void processControlMessages() {
 }
 
 void updateLEDS() {
+  if (!needsStatusUpdate || learning || isHoldingLearnButton) {
+    return;
+  }
+
+  u8x8.clear();
+
+  bool shifted = group3LEDMask & LED_SHIFT;
+
   u8x8.setFont(MEDIUM_FONT);
-  u8x8.setCursor(0, 4);
+  u8x8.setCursor(0, 6);
   u8x8.setInverseFont(group2LEDMask & LED_PHASE);
   u8x8.print("Ph");
-  u8x8.setCursor(3, 4);
+  u8x8.setCursor(3, 6);
   u8x8.setInverseFont(group2LEDMask & LED_CHROMA);
   u8x8.print("Ch");
-  u8x8.setCursor(6, 4);
+  u8x8.setCursor(6, 6);
   u8x8.setInverseFont(group2LEDMask & LED_BRIGHT);
   u8x8.print("Br");
-  u8x8.setCursor(9, 4);
+  u8x8.setCursor(9, 6);
   u8x8.setInverseFont(group2LEDMask & LED_CONTRAST);
   u8x8.print("Co");
 
-  u8x8.setCursor(0, 0);
+  u8x8.setCursor(0, 1);
   u8x8.setInverseFont(group3LEDMask & LED_SHIFT);
   u8x8.print("Sh");
-  u8x8.setCursor(3, 0);
+  u8x8.setCursor(3, 1);
   u8x8.setInverseFont(group3LEDMask & LED_OVERSCAN);
-  u8x8.print("Ov");
-  u8x8.setCursor(6, 0);
+  u8x8.print(shifted ? "16" : "Ov");
+  u8x8.setCursor(6, 1);
   u8x8.setInverseFont(group3LEDMask & LED_H_SYNC);
-  u8x8.print("H");
-  u8x8.setCursor(9, 0);
+  u8x8.print(shifted ? "Sy" : "Hs");
+  u8x8.setCursor(9, 1);
   u8x8.setInverseFont(group3LEDMask & LED_V_SYNC);
-  u8x8.print("V");
-  u8x8.setCursor(12, 0);
+  u8x8.print(shifted ? "BO" : "Vs");
+  u8x8.setCursor(12, 1);
   u8x8.setInverseFont(group3LEDMask & LED_MONO);
-  u8x8.print("Mo");
+  u8x8.print(shifted ? "R" : "Mo");
 
-  u8x8.setCursor(0, 2);
+  u8x8.setCursor(0, 4);
   u8x8.setInverseFont(group4LEDMask & LED_APT);
-  u8x8.print("Ap");
-  u8x8.setCursor(3, 2);
+  u8x8.print(shifted ? "G" : "Ap");
+  u8x8.setCursor(3, 4);
   u8x8.setInverseFont(group4LEDMask & LED_COMB);
-  u8x8.print("Cb");
-  u8x8.setCursor(6, 2);
+  u8x8.print(shifted ? "B" : "Cb");
+  u8x8.setCursor(6, 4);
   u8x8.setInverseFont(group4LEDMask & LED_F1);
-  u8x8.print("F1");
-  u8x8.setCursor(9, 2);
+  u8x8.print(shifted ? "F2" : "F1");
+  u8x8.setCursor(9, 4);
   u8x8.setInverseFont(group4LEDMask & LED_F3);
-  u8x8.print("F2");
-  u8x8.setCursor(12, 2);
+  u8x8.print(shifted ? "F4" : "F3");
+  u8x8.setCursor(12, 4);
   u8x8.setInverseFont(group4LEDMask & LED_SAFE_AREA);
-  u8x8.print("Sa");
+  u8x8.print(shifted ? "Ad" : "Sa");
+
+  needsStatusUpdate = false;
 }
 
 void processCommandBuffer() {
@@ -450,36 +475,6 @@ void learnRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
   }
 }
 
-//MARK:- Physical button handling
-#ifdef USE_PHYSICAL_BUTTONS
-void readButtons() {
-  buttonState = LOW;
-
-  int newState = LOW;
-
-  int x = sizeof(buttonCommands) / sizeof(ButtonCommand);
-  for (int i = 0; i < x; i++) {
-    newState |= digitalRead(buttonCommands[i].pin) == HIGH ? buttonCommands[i].button : newState;
-  }
-
-  buttonState = newState;
-}
-
-void sendButtonCommand() {
-  if (!buttonState) {
-    return;
-  }
-
-  int x = sizeof(buttonCommands) / sizeof(ButtonCommand);
-  for (int i = 0; i < x; i++) {
-    if (buttonState & buttonCommands[i].button) {
-      ControlCode *toSend = (ControlCode*)&buttonCommands[i].cmd;
-      commandBuffer.push(toSend);
-    }
-  }
-}
-#endif
-
 //MARK:- Helpers
 bool equals(RemoteKey lhs, RemoteKey rhs) {
   return lhs.address == rhs.address && lhs.code == rhs.code;
@@ -496,13 +491,21 @@ void dumpNames() {
 
 void powerSave() {
   if ((millis() - timers->lastInput > SLEEP_TIMER) && !displaySleep) {
+    setLowPowerMode(true);
+  } else if ((millis() - timers->lastInput < SLEEP_TIMER) && displaySleep) {
+    setLowPowerMode(false);
+  }
+}
+
+void setLowPowerMode(bool enable) {
+  if (enable) {
     cancelLearning();
     u8x8.setPowerSave(1);
     displaySleep = true;
-  } else if ((millis() - timers->lastInput < SLEEP_TIMER) && displaySleep) {
+  } else {
     u8x8.setPowerSave(0);
-    showName();
     displaySleep = false;
+    needsStatusUpdate = true;
   }
 }
 

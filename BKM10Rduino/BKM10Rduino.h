@@ -10,16 +10,21 @@
 #include <EEPROM.h>
 #include <U8g2lib.h>
 
+#ifdef USE_HW_SPI
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
 #endif
+#endif
+
+#ifdef USE_HW_I2C
 #ifdef U8X8_HAVE_HW_I2C
 #include <Wire.h>
 #endif
+#endif
 
 /*
- * Holds any timestamps required for time based events
- */
+   Holds any timestamps required for time based events
+*/
 struct Timers {
   unsigned long lastPoll;
   unsigned long learnHold;
@@ -36,10 +41,10 @@ struct RemoteKey {
 } remoteKey;
 
 /**
- * Provides a convenience subscript accessor to EEPROM for stored key codes
- * 
- * Treats EEPROM from address 0 as an array equivalent to `RemoteKey keys[]`
- */
+   Provides a convenience subscript accessor to EEPROM for stored key codes
+
+   Treats EEPROM from address 0 as an array equivalent to `RemoteKey keys[]`
+*/
 struct StoredKey {
   RemoteKey operator [] (int i) {
     RemoteKey k;
@@ -49,10 +54,10 @@ struct StoredKey {
 };
 
 /*
- * Two byte BKM-10R control code
- * 
- * Codes are sent over RS485 as `keydown, group, code`
- */
+   Two byte BKM-10R control code
+
+   Codes are sent over RS485 as `keydown, group, code`
+*/
 struct ControlCode {
   byte group;
   byte code;
@@ -192,8 +197,8 @@ const char * const names[] PROGMEM = {
 #define LED_F3 0x08
 #define LED_SAFE_AREA 0x10
 
-enum selectedBank{ISW, ILE, IEN, IMT, ICC, DATA, none};
-enum serialState{BANK, KEYDOWN, GROUP, MASK};
+enum selectedBank {ISW, ILE, IEN, IMT, ICC, DATA, none};
+enum serialState {BANK, KEYDOWN, GROUP, MASK};
 
 const struct Command commands[] = {
   { BKM_POWER, false, 0 },
@@ -229,37 +234,6 @@ const struct Command commands[] = {
   { BKM_CONTRAST, false, 30 },
   { BKM_DEGAUSS, false, 31 },
 };
-
-#ifdef USE_PHYSICAL_BUTTONS
-
-#define BUTTON_DOWN_PIN     A7
-#define BUTTON_UP_PIN       A6
-#define BUTTON_MENU_PIN     A5
-#define BUTTON_ENTER_PIN    A4
-#define BUTTON_POWER_PIN    A3
-
-#define buttonUp 1
-#define buttonDown 1 << 1
-#define buttonMenu 1 << 2
-#define buttonEnter 1 << 3
-#define buttonPwr 1 << 4
-
-struct ButtonCommand {
-  struct ControlCode cmd;
-  int button;
-  int pin;
-  bool repeats;
-} buttonCommand;
-
-const struct ButtonCommand buttonCommands[] = {
-    { BKM_POWER, buttonPwr, BUTTON_POWER_PIN, false };,
-    { BKM_MENU, buttonMenu, BUTTON_MENU_PIN, false },
-    { BKM_ENTER, buttonEnter, BUTTON_ENTER_PIN, false },
-    { BKM_UP, buttonUp, BUTTON_UP_PIN, true },
-    { BKM_DOWN, buttonDown, BUTTON_DOWN_PIN, true },
-};
-#endif
-
 
 /*** Thank you to the anonymous pastebin hero responsible for providing the control codes ***/
 
