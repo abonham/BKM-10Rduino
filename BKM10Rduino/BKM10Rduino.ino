@@ -11,7 +11,6 @@
 #define SMALL_FONT u8x8_font_chroma48medium8_r
 
 //#define USE_PHYSICAL_BUTTONS 1
-#define FULL_DUPLEX
 
 #include "BKM10Rduino.h"
 #include <CircularBuffer.h>
@@ -35,6 +34,10 @@ volatile bool displaySleep = false;
 volatile bool rs485sleep = false;
 volatile uint16_t leds = 0;
 volatile enum selectedBank bank = none;
+
+volatile int group2LEDMask = 0;
+volatile int group3LEDMask = 0;
+volatile int group4LEDMask = 0;
 
 //subscript accessor for RemoteKeys in EEPROM
 StoredKey eeprom;
@@ -84,13 +87,8 @@ void setup() {
 
   pinMode(TX_ENABLE_PIN, OUTPUT);
   pinMode(RX_ENABLE_LOW_PIN, OUTPUT);
-#ifdef FULL_DUPLEX
   digitalWrite(TX_ENABLE_PIN, HIGH);
   digitalWrite(RX_ENABLE_LOW_PIN, LOW);
-#else
-  digitalWrite(RX_ENABLE_LOW_PIN, LOW);
-  digitalWrite(TX_ENABLE_PIN, HIGH);
-#endif
 
   timers->lastPoll = millis();
   timers->learnHold = millis();
@@ -175,10 +173,12 @@ void updateState() {
 }
 
 int checkBank(byte* b) {
+#ifdef SERIAL_LOGGING
   Serial.print(b[0], HEX);
   Serial.print(b[1], HEX);
   Serial.println(b[2], HEX);
   Serial.println((char*)b);
+#endif
 
   if (strcmp(b, "ILE") == 0) {
     return ILE;
@@ -196,10 +196,12 @@ int checkBank(byte* b) {
     return ICC;
   }
   else if ((unsigned char)b[0] == 0x44) {
+#ifdef SERIAL_LOGGING
     Serial.print(F("Group: "));
     Serial.println((unsigned char)b[1], HEX);
     Serial.print(F("Mask: "));
     Serial.println((unsigned char) b[2], HEX);
+#endif
     return DATA;
   }
   else {
@@ -210,12 +212,30 @@ int checkBank(byte* b) {
 //MARK:- BKM-10R TX/RX methods
 void processControlMessages() {
   if (Serial.available() >= 3) {
-    byte bankIn[4];                  //extra char for null termination
-    Serial.readBytes(bankIn, 3);
-    bankIn[3] = '\0';
-    enum selectedBank packet = checkBank(bankIn);
+    byte incoming[4];                  //extra char for null termination
+    Serial.readBytes(incoming, 3);
+    incoming[3] = '\0';
+    enum selectedBank packet = checkBank(incoming);
     if ((bank == ILE) && (packet == DATA)) {
-      Serial.println(F("In ILE Bank, process led status"));
+      switch (incoming[1]) {
+        case 0x02:
+          group2LEDMask = incoming[2];
+          break;
+        case 0x03:
+          group3LEDMask = incoming[2];
+          break;
+        case 0x04:
+          group4LEDMask = incoming[2];
+          break;
+        default:
+          break;
+      }
+#ifdef SERIAL_LOGGING
+      Serial.println(F("In ILE Bank, process led status: "));
+      Serial.println(group2LEDMask, HEX);
+      Serial.println(group3LEDMask, HEX);
+      Serial.println(group4LEDMask, HEX);
+#endif
     } else {
       bank = packet;
     }
@@ -228,56 +248,13 @@ void processCommandBuffer() {
     ControlCode *code = (ControlCode*)commandBuffer.shift();
     sendCode(code);
   }
-
-  //#ifdef FULL_DUPLEX
-  //  //Don't send if currently receiving
-  //  if (!Serial.available()) {
-  //#endif
-  //
-  //    while (!commandBuffer.isEmpty()) {
-  //      ControlCode *code = (ControlCode*)commandBuffer.shift();
-  //      sendCode(code);
-  //    }
-  //
-  //#ifdef FULL_DUPLEX
-  //  } else {
-  //#ifdef SERIAL_LOGGING
-  //    Serial.println("has serial waiting");
-  //#endif
-  //  }
-  //#endif
 }
 
-/*
-   Sending is currently made a blocking op by Serial.flush().
-   This is to ensure that the serial buffer is empty when setting
-   the half duplex MAX485E read enable after sending.
-
-   This should be fine as it's only ever sending 4 bytes at a time.
-*/
 void sendCode(ControlCode *code) {
-  //#ifdef FULL_DUPLEX
-  //  digitalWrite(RX_ENABLE_LOW_PIN, HIGH);
-  //  digitalWrite(TX_ENABLE_PIN, HIGH);
-  //#endif
-
-  if (rs485sleep) {
-    delay(1); //max485e has a 800us max wake up time
-    rs485sleep = false;
-  }
-
   Serial.write(ISWBank);
   Serial.write(keydown);
   Serial.write(code->group);
   Serial.write(code->code);
-
-  //#ifdef FULL_DUPLEX
-  //  //this is bad, should find a way to check the tx buffer properly
-  //  //TXCn interupt look ok on surface but is far to complex to use
-  //  //for this simple requirement.
-  //  digitalWrite(RX_ENABLE_LOW_PIN, LOW);
-  //  digitalWrite(TX_ENABLE_PIN, LOW);
-  //#endif
 }
 
 //MARK:- IR receiver interupt handlers
@@ -469,25 +446,12 @@ void dumpNames() {
   }
 }
 
-void idleRS485(bool willIdle) {
-  if (willIdle) {
-    digitalWrite(RX_ENABLE_LOW_PIN, HIGH);
-    digitalWrite(TX_ENABLE_PIN, LOW);
-    rs485sleep = true;
-  } else {
-    digitalWrite(RX_ENABLE_LOW_PIN, LOW);
-    rs485sleep = false;
-  }
-}
-
 void powerSave() {
   if ((millis() - timers->lastInput > SLEEP_TIMER) && !displaySleep) {
     cancelLearning();
     u8x8.setPowerSave(1);
     displaySleep = true;
-    idleRS485(true);
   } else if ((millis() - timers->lastInput < SLEEP_TIMER) && displaySleep) {
-    digitalWrite(RX_ENABLE_LOW_PIN, LOW);
     u8x8.setPowerSave(0);
     showName();
     displaySleep = false;

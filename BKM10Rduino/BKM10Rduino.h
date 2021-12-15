@@ -153,21 +153,44 @@ const char * const names[] PROGMEM = {
 #define BKM_NINE      { 0x01, 0x02 }
 #define BKM_DEL       { 0x01, 0x04 }
 #define BKM_ENT       { 0x01, 0x08 }
+
 #define BKM_SHIFT     { 0x03, 0x01 }
 #define BKM_OVERSCAN  { 0x03, 0x02 } //OVERSCAN / 16:9
 #define BKM_H_SYNC    { 0x03, 0x04 } //HORIZ SYNC VIEW / SYNC
 #define BKM_V_SYNC    { 0x03, 0x08 } //VERT SYNC VIEW / BLUE ONLY
 #define BKM_MONO      { 0x03, 0x10 } //MONO / R
+
 #define BKM_APT       { 0x04, 0x01 } //APT / G
 #define BKM_COMB      { 0x04, 0x02 } //COMB / B
 #define BKM_F1        { 0x04, 0x04 } //F1 / F3
 #define BKM_F3        { 0x04, 0x08 } //F2 / F4
 #define BKM_SAFE_AREA { 0x04, 0x10 } //SAFE AREA / ADDRESS
+
 #define BKM_PHASE     { 0x02, 0x08 } //PHASE MANUAL
 #define BKM_CHROMA    { 0x02, 0x04 } //CHROMA MANUAL
 #define BKM_BRIGHT    { 0x02, 0x02 } //BRIGHT MANUAL
 #define BKM_CONTRAST  { 0x02, 0x01 } //CONTRAST MANUAL
 #define BKM_DEGAUSS   { 0x01, 0x20 } //DEGAUSS
+
+//LED Group 2
+#define LED_CONTRAST 0x01
+#define LED_BRIGHT 0x02
+#define LED_CHROMA 0x04
+#define LED_PHASE 0x08
+
+//LED Group 3
+#define LED_SHIFT 0x01
+#define LED_OVCERSCAN 0x02
+#define LED_H_SYNC 0x04
+#define LED_V_SYNC 0x08
+#define LED_MONO 0x10
+
+//LED Group 4
+#define LED_APT 0x01
+#define LED_COMB 0x02
+#define LED_F1 0x04
+#define LED_F2 0x08
+#define LED_SAFE_AREA 0x10
 
 enum led{SHIFT, OVERSCAN, H_SYNC, V_SYNC, MONO, APT, COMB, F_1, F_2, SAFE, PHASE, CHROMA, BRIGHT, CONTRAST};
 enum selectedBank{ISW, ILE, IEN, IMT, ICC, DATA, none};
