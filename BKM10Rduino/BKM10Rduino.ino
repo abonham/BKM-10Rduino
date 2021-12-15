@@ -1,7 +1,7 @@
 #define LEARN_TIMEOUT 3000
 #define SLEEP_TIMER 60000
 #define CIRCULAR_BUFFER_INT_SAFE
-#define SERIAL_LOGGING
+//#define SERIAL_LOGGING
 #define __ASSERT_USE_STDERR
 #define POLL_RATE 33
 #define I2C_DISPLAY
@@ -43,7 +43,7 @@ volatile int group4LEDMask = 0;
 StoredKey eeprom;
 
 #ifdef I2C_DISPLAY
-U8X8_SSD1306_128X64_NONAME_SW_I2C  u8x8(9, 10, U8X8_PIN_NONE);
+U8X8_SSD1306_128X64_NONAME_SW_I2C  u8x8(10, 9, U8X8_PIN_NONE);
 #else
 //U8X8_SH1106_128X64_NONAME_4W_HW_SPI u8x8(/* cs=*/ 9, /* dc=*/ 10, /* reset=*/ 12);
 U8X8_SH1106_128X64_NONAME_4W_SW_SPI u8x8(13, 11, /* cs=*/ 9, /* dc=*/ 10, /* reset=*/ 8);
@@ -154,7 +154,6 @@ void updateState() {
         u8x8.print(buffer);
       }
       u8x8.setFont(SMALL_FONT);
-
       u8x8.setInverseFont(0);
     }
 
@@ -168,7 +167,7 @@ void updateState() {
 #endif
 
     timers->lastPoll = millis();
-    powerSave();
+    //    powerSave();
   }
 }
 
@@ -236,14 +235,63 @@ void processControlMessages() {
       Serial.println(group3LEDMask, HEX);
       Serial.println(group4LEDMask, HEX);
 #endif
+      u8x8.clear();
+      updateLEDS();
     } else {
       bank = packet;
     }
   }
 }
 
-void processCommandBuffer() {
+void updateLEDS() {
+  u8x8.setFont(MEDIUM_FONT);
+  u8x8.setCursor(0, 4);
+  u8x8.setInverseFont(group2LEDMask & LED_PHASE);
+  u8x8.print("Ph");
+  u8x8.setCursor(3, 4);
+  u8x8.setInverseFont(group2LEDMask & LED_CHROMA);
+  u8x8.print("Ch");
+  u8x8.setCursor(6, 4);
+  u8x8.setInverseFont(group2LEDMask & LED_BRIGHT);
+  u8x8.print("Br");
+  u8x8.setCursor(9, 4);
+  u8x8.setInverseFont(group2LEDMask & LED_CONTRAST);
+  u8x8.print("Co");
 
+  u8x8.setCursor(0, 0);
+  u8x8.setInverseFont(group3LEDMask & LED_SHIFT);
+  u8x8.print("Sh");
+  u8x8.setCursor(3, 0);
+  u8x8.setInverseFont(group3LEDMask & LED_OVERSCAN);
+  u8x8.print("Ov");
+  u8x8.setCursor(6, 0);
+  u8x8.setInverseFont(group3LEDMask & LED_H_SYNC);
+  u8x8.print("H");
+  u8x8.setCursor(9, 0);
+  u8x8.setInverseFont(group3LEDMask & LED_V_SYNC);
+  u8x8.print("V");
+  u8x8.setCursor(12, 0);
+  u8x8.setInverseFont(group3LEDMask & LED_MONO);
+  u8x8.print("Mo");
+
+  u8x8.setCursor(0, 2);
+  u8x8.setInverseFont(group4LEDMask & LED_APT);
+  u8x8.print("Ap");
+  u8x8.setCursor(3, 2);
+  u8x8.setInverseFont(group4LEDMask & LED_COMB);
+  u8x8.print("Cb");
+  u8x8.setCursor(6, 2);
+  u8x8.setInverseFont(group4LEDMask & LED_F1);
+  u8x8.print("F1");
+  u8x8.setCursor(9, 2);
+  u8x8.setInverseFont(group4LEDMask & LED_F3);
+  u8x8.print("F2");
+  u8x8.setCursor(12, 2);
+  u8x8.setInverseFont(group4LEDMask & LED_SAFE_AREA);
+  u8x8.print("Sa");
+}
+
+void processCommandBuffer() {
   while (!commandBuffer.isEmpty()) {
     ControlCode *code = (ControlCode*)commandBuffer.shift();
     sendCode(code);

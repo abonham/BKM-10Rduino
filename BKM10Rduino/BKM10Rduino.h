@@ -180,7 +180,7 @@ const char * const names[] PROGMEM = {
 
 //LED Group 3
 #define LED_SHIFT 0x01
-#define LED_OVCERSCAN 0x02
+#define LED_OVERSCAN 0x02
 #define LED_H_SYNC 0x04
 #define LED_V_SYNC 0x08
 #define LED_MONO 0x10
@@ -189,10 +189,9 @@ const char * const names[] PROGMEM = {
 #define LED_APT 0x01
 #define LED_COMB 0x02
 #define LED_F1 0x04
-#define LED_F2 0x08
+#define LED_F3 0x08
 #define LED_SAFE_AREA 0x10
 
-enum led{SHIFT, OVERSCAN, H_SYNC, V_SYNC, MONO, APT, COMB, F_1, F_2, SAFE, PHASE, CHROMA, BRIGHT, CONTRAST};
 enum selectedBank{ISW, ILE, IEN, IMT, ICC, DATA, none};
 enum serialState{BANK, KEYDOWN, GROUP, MASK};
 
