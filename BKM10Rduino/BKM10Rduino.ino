@@ -25,6 +25,11 @@
 
 #include <assert.h>
 
+#ifdef SERIAL_LOGGING
+#define TX_EN digitalWrite(TX_ENABLE_PIN, HIGH);
+#define TX_D digitalWrite(TX_ENABLE_PIN, LOW);
+#endif
+
 CircularBuffer<void*, 4> commandBuffer;
 
 #ifdef USE_PHYSICAL_BUTTONS
@@ -105,7 +110,9 @@ void setup() {
   timers->lastInput = millis();
 
 #ifdef SERIAL_LOGGING
+  TX_D
   dumpEEPROM();
+  TX_EN
 #endif
   u8x8.clearLine(7);
 }
@@ -179,10 +186,12 @@ void displayLearningMessage() {
 
 int checkBank(byte* b) {
 #ifdef SERIAL_LOGGING
+  TX_D
   Serial.print(b[0], HEX);
   Serial.print(b[1], HEX);
   Serial.println(b[2], HEX);
   Serial.println((char*)b);
+  TX_EN
 #endif
 
   if (strcmp(b, "ILE") == 0) {
@@ -202,10 +211,12 @@ int checkBank(byte* b) {
   }
   else if ((unsigned char)b[0] == 0x44) {
 #ifdef SERIAL_LOGGING
+    TX_D
     Serial.print(F("Group: "));
     Serial.println((unsigned char)b[1], HEX);
     Serial.print(F("Mask: "));
     Serial.println((unsigned char) b[2], HEX);
+    TX_EN
 #endif
     return DATA;
   }
@@ -281,35 +292,35 @@ void updateLEDS() {
   u8x8.setInverseFont(group2LEDMask & LED_CONTRAST);
   u8x8.print("Co");
 
-  u8x8.setCursor(0, 1);
+  u8x8.setCursor(0, 0);
   u8x8.setInverseFont(group3LEDMask & LED_SHIFT);
   u8x8.print("Sh");
-  u8x8.setCursor(3, 1);
+  u8x8.setCursor(3, 0);
   u8x8.setInverseFont(group3LEDMask & LED_OVERSCAN);
   u8x8.print(shifted ? "16" : "Ov");
-  u8x8.setCursor(6, 1);
+  u8x8.setCursor(6, 0);
   u8x8.setInverseFont(group3LEDMask & LED_H_SYNC);
   u8x8.print(shifted ? "Sy" : "Hs");
-  u8x8.setCursor(9, 1);
+  u8x8.setCursor(9, 0);
   u8x8.setInverseFont(group3LEDMask & LED_V_SYNC);
-  u8x8.print(shifted ? "BO" : "Vs");
-  u8x8.setCursor(12, 1);
+  u8x8.print(shifted ? "B*" : "Vs");
+  u8x8.setCursor(12, 0);
   u8x8.setInverseFont(group3LEDMask & LED_MONO);
   u8x8.print(shifted ? "R" : "Mo");
 
-  u8x8.setCursor(0, 4);
+  u8x8.setCursor(0, 3);
   u8x8.setInverseFont(group4LEDMask & LED_APT);
   u8x8.print(shifted ? "G" : "Ap");
-  u8x8.setCursor(3, 4);
+  u8x8.setCursor(3, 3);
   u8x8.setInverseFont(group4LEDMask & LED_COMB);
   u8x8.print(shifted ? "B" : "Cb");
-  u8x8.setCursor(6, 4);
+  u8x8.setCursor(6, 3);
   u8x8.setInverseFont(group4LEDMask & LED_F1);
   u8x8.print(shifted ? "F2" : "F1");
-  u8x8.setCursor(9, 4);
+  u8x8.setCursor(9, 3);
   u8x8.setInverseFont(group4LEDMask & LED_F3);
   u8x8.print(shifted ? "F4" : "F3");
-  u8x8.setCursor(12, 4);
+  u8x8.setCursor(12, 3);
   u8x8.setInverseFont(group4LEDMask & LED_SAFE_AREA);
   u8x8.print(shifted ? "Ad" : "Sa");
 
@@ -350,6 +361,7 @@ void handleRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
       if (!isRepeat || commands[i].repeats) { //remotes set isRepeat when holding down a button
         commandBuffer.push(toSend);
 #ifdef SERIAL_LOGGING
+        TX_D
         char buffer[20];
         strcpy_P(buffer, (char*)pgm_read_word(&(names[i])));
         Serial.println("\nWill send command: ");
@@ -358,15 +370,20 @@ void handleRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
         Serial.print("(");
         Serial.print(buffer);
         Serial.println(")");
+        TX_EN
 #endif
       }
       return;
     }
   }
+#ifdef SERIAL_LOGGING
+  TX_D
   Serial.print("\nunknown key: ");
   Serial.print(aAddress, HEX);
   Serial.print(" ");
   Serial.println(aCommand, HEX);
+  TX_EN
+#endif
 }
 
 //MARK:- Learn remote control
@@ -407,7 +424,9 @@ void updateIsLearning() {
 
 void cancelLearning() {
 #ifdef SERIAL_LOGGING
+  TX_D
   Serial.println("cancel learning");
+  TX_EN
 #endif
   learning = false;
   learningInput->address = 0;
@@ -433,18 +452,22 @@ void processLearnQueue() {
   }
 
 #ifdef SERIAL_LOGGING
+  TX_D
   RemoteKey old = eeprom[learnIndex];
   Serial.print("old: ");
   Serial.print(old.address, HEX);
   Serial.println(old.code, HEX);
+  TX_EN
 #endif
 
   RemoteKey newKey = { learningInput->address, learningInput->code, learnIndex };
 
 #ifdef SERIAL_LOGGING
+  TX_D
   Serial.print("new: ");
   Serial.print(newKey.address, HEX);
   Serial.println(newKey.code, HEX);
+  TX_EN
 #endif
 
   EEPROM.put(learnIndex * sizeof(RemoteKey), newKey);
