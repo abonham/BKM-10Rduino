@@ -65,9 +65,11 @@ U8X8_SH1106_128X64_NONAME_4W_SW_SPI u8x8(13, 11, /* cs=*/ 9, /* dc=*/ 10, /* res
 #endif
 
 void setup() {
+  pinMode(LEARN_ENABLE_PIN, INPUT_PULLUP);
+  
   u8x8.begin();
   u8x8.setPowerSave(0);
-  u8x8.setFlipMode(1);
+  u8x8.setFlipMode(digitalRead(LEARN_ENABLE_PIN));
   u8x8.setFont(SMALL_FONT);
   showName();
   u8x8.setCursor(0, 7);
@@ -98,7 +100,7 @@ void setup() {
   pinMode(BUTTON_POWER_PIN, INPUT);
 #endif
 
-  pinMode(LEARN_ENABLE_PIN, INPUT_PULLUP);
+  
 
   pinMode(TX_ENABLE_PIN, OUTPUT);
   pinMode(RX_ENABLE_LOW_PIN, OUTPUT);
