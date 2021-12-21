@@ -33,12 +33,18 @@ struct Timers {
 
 const byte keydown = 0x44;
 const char ISWBank[] = "ISW";
+const char IENBank[] = "IEN";
 
 struct RemoteKey {
   uint16_t address;
   uint8_t code;
   uint8_t id;
 } remoteKey;
+
+#define CONTRAST_ENCODER 0x00
+#define BRIGHT_ENCODER 0x01
+#define CHROMA_ENCODER 0x02
+#define PHASE_ENCODER 0x03
 
 /**
    Provides a convenience subscript accessor to EEPROM for stored key codes
@@ -62,6 +68,8 @@ struct ControlCode {
   byte group;
   byte code;
 } controlCode;
+
+enum encoder { CONTRAST = CONTRAST_ENCODER, BRIGHTNESS = BRIGHT_ENCODER, CHROMA = CHROMA_ENCODER, PHASE = PHASE_ENCODER };
 
 struct RotaryEncoder {
   byte encoderId;
@@ -234,6 +242,10 @@ const struct Command commands[] = {
   { BKM_CONTRAST, false, 30 },
   { BKM_DEGAUSS, false, 31 },
 };
+
+RemoteKey switchEncoder = { 0x19D2, 0x84, 32 };
+RemoteKey encoderUp = { 0x19D2, 0x82, 33 };
+RemoteKey encoderDown = { 0x19D2, 0x83, 34 };
 
 /*** Thank you to the anonymous pastebin hero responsible for providing the control codes ***/
 

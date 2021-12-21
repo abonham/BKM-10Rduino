@@ -1,10 +1,11 @@
 #define LEARN_TIMEOUT 3000
 #define SLEEP_TIMER 300000
 #define CIRCULAR_BUFFER_INT_SAFE
+#define TICK_RATE 100
 
 //Uncomment to enable output to serial monitor
 //Not recommended to enable while connected to BVM
-//#define SERIAL_LOGGING
+#define SERIAL_LOGGING
 
 #define __ASSERT_USE_STDERR
 #define POLL_RATE 16
@@ -47,6 +48,7 @@ volatile bool displaySleep = false;
 volatile bool rs485sleep = false;
 volatile uint16_t leds = 0;
 volatile enum selectedBank bank = none;
+volatile uint8_t selectedEncoder = 0x00;
 
 volatile bool needsStatusUpdate = false;
 
@@ -66,7 +68,7 @@ U8X8_SH1106_128X64_NONAME_4W_SW_SPI u8x8(13, 11, /* cs=*/ 9, /* dc=*/ 10, /* res
 
 void setup() {
   pinMode(LEARN_ENABLE_PIN, INPUT_PULLUP);
-  
+
   u8x8.begin();
   u8x8.setPowerSave(0);
   u8x8.setFlipMode(digitalRead(LEARN_ENABLE_PIN));
@@ -100,7 +102,7 @@ void setup() {
   pinMode(BUTTON_POWER_PIN, INPUT);
 #endif
 
-  
+
 
   pinMode(TX_ENABLE_PIN, OUTPUT);
   pinMode(RX_ENABLE_LOW_PIN, OUTPUT);
@@ -116,7 +118,7 @@ void setup() {
   dumpEEPROM();
   TX_EN
 #endif
-  u8x8.clearLine(7);
+  u8x8.clear();
 }
 
 void dumpEEPROM() {
@@ -276,8 +278,6 @@ void updateLEDS() {
     return;
   }
 
-  u8x8.clear();
-
   bool shifted = group3LEDMask & LED_SHIFT;
 
   u8x8.setFont(MEDIUM_FONT);
@@ -326,6 +326,25 @@ void updateLEDS() {
   u8x8.setInverseFont(group4LEDMask & LED_SAFE_AREA);
   u8x8.print(shifted ? "Ad" : "Sa");
 
+  u8x8.setCursor(12, 6);
+  u8x8.setInverseFont(0);
+  switch (selectedEncoder) {
+    case 0:
+      u8x8.print("EnC");
+      break;
+    case 1:
+      u8x8.print("EnB");
+      break;
+    case 2:
+      u8x8.print("EnY");
+      break;
+    case 3:
+      u8x8.print("EnP");
+      break;
+    default:
+      u8x8.print("En?");
+  }
+
   needsStatusUpdate = false;
 }
 
@@ -343,6 +362,23 @@ void sendCode(ControlCode *code) {
   Serial.write(code->code);
 }
 
+void sendEncoder(uint8_t id, int tick) {
+#ifdef SERIAL_LOGGING
+  TX_D
+  Serial.println("");
+  Serial.print(F("Rotary Encoder: "));
+  Serial.print(id);
+  Serial.print(" - ");
+  Serial.println(tick);
+  TX_EN
+  delay(10);
+#endif
+  Serial.write(IENBank);
+  Serial.write(keydown);
+  Serial.write((byte)id);
+  Serial.write((byte)tick);
+}
+
 //MARK:- IR receiver interupt handlers
 void handleReceivedTinyIRData(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
   timers->lastInput = millis();
@@ -354,7 +390,33 @@ void handleReceivedTinyIRData(uint16_t aAddress, uint8_t aCommand, bool isRepeat
 }
 
 void handleRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
+  needsStatusUpdate = true;
   RemoteKey input = { aAddress, aCommand, 99 };
+  if (equals(input, switchEncoder) && !isRepeat)  {
+    int next = selectedEncoder + 1;
+    selectedEncoder = next <= 3 ? next : 0;
+#ifdef SERIAL_LOGGING
+    TX_D
+    Serial.println(selectedEncoder);
+    TX_EN
+#endif
+    updateLEDS();
+    return;
+  } else if (equals(input, switchEncoder)) {
+#ifdef SERIAL_LOGGING
+    TX_D
+    Serial.println(F("switch encoder repeat - ignoring"));
+    TX_EN
+#endif
+    return;
+  } else if (equals(input, encoderUp)) {
+    sendEncoder(selectedEncoder, TICK_RATE);
+    return;
+  } else if (equals(input, encoderDown)) {
+    sendEncoder(selectedEncoder, -TICK_RATE);
+    return;
+  }
+
   int x = sizeof(commands) / sizeof(Command);
   for (int i = 0; i < x; i++) {
     RemoteKey k = eeprom[i];
@@ -436,7 +498,8 @@ void cancelLearning() {
   lastLearnedInput->address = 0;
   lastLearnedInput->code = 0;
   learnIndex = 0;
-  showName();
+  u8x8.clear();
+  needsStatusUpdate = true;
 }
 
 void processLearnQueue() {
@@ -500,8 +563,26 @@ void learnRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
   }
 }
 
+void sendRotaryUpdate() {
+
+  return;
+}
+
 //MARK:- Helpers
-bool equals(RemoteKey lhs, RemoteKey rhs) {
+enum encoder nextEncoder() {
+  switch (selectedEncoder) {
+    case CONTRAST:
+          return BRIGHTNESS;
+      case BRIGHTNESS:
+        return CHROMA;
+      case CHROMA:
+        return PHASE;
+      case PHASE:
+        return CONTRAST;
+    }
+  }
+
+  bool equals(RemoteKey lhs, RemoteKey rhs) {
   return lhs.address == rhs.address && lhs.code == rhs.code;
 }
 
