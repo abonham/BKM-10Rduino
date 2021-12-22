@@ -1,7 +1,6 @@
 #define LEARN_TIMEOUT 3000
 #define SLEEP_TIMER 300000
 #define CIRCULAR_BUFFER_INT_SAFE
-#define TICK_RATE 100
 
 //Uncomment to enable output to serial monitor
 //Not recommended to enable while connected to BVM
@@ -25,11 +24,7 @@
 #include <CircularBuffer.h>
 
 #include <assert.h>
-
-#ifdef SERIAL_LOGGING
-#define TX_EN digitalWrite(TX_ENABLE_PIN, HIGH);
-#define TX_D digitalWrite(TX_ENABLE_PIN, LOW);
-#endif
+#include "logging.h"
 
 CircularBuffer<void*, 4> commandBuffer;
 
@@ -89,6 +84,8 @@ void setup() {
     }
     setROMInitFlag(true);
     learning = true;
+  } else if (eeprom[0].address && eeprom[0].code && eeprom[0].id) {
+    learning = true;
   }
 
   initPCIInterruptForTinyReceiver();
@@ -102,8 +99,6 @@ void setup() {
   pinMode(BUTTON_POWER_PIN, INPUT);
 #endif
 
-
-
   pinMode(TX_ENABLE_PIN, OUTPUT);
   pinMode(RX_ENABLE_LOW_PIN, OUTPUT);
   digitalWrite(TX_ENABLE_PIN, HIGH);
@@ -114,11 +109,12 @@ void setup() {
   timers->lastInput = millis();
 
 #ifdef SERIAL_LOGGING
-  TX_D
-  dumpEEPROM();
-  TX_EN
+//  TX_D
+//  dumpEEPROM();
+//  TX_EN
 #endif
   u8x8.clear();
+  updateLEDS();
 }
 
 void dumpEEPROM() {
@@ -189,14 +185,7 @@ void displayLearningMessage() {
 }
 
 int checkBank(byte* b) {
-#ifdef SERIAL_LOGGING
-  TX_D
-  Serial.print(b[0], HEX);
-  Serial.print(b[1], HEX);
-  Serial.println(b[2], HEX);
-  Serial.println((char*)b);
-  TX_EN
-#endif
+  logCheckBank(b);
 
   if (strcmp(b, "ILE") == 0) {
     return ILE;
@@ -214,14 +203,7 @@ int checkBank(byte* b) {
     return ICC;
   }
   else if ((unsigned char)b[0] == 0x44) {
-#ifdef SERIAL_LOGGING
-    TX_D
-    Serial.print(F("Group: "));
-    Serial.println((unsigned char)b[1], HEX);
-    Serial.print(F("Mask: "));
-    Serial.println((unsigned char) b[2], HEX);
-    TX_EN
-#endif
+    logGroupMask(b);
     return DATA;
   }
   else {
@@ -260,12 +242,7 @@ void processControlMessages() {
         default:
           break;
       }
-#ifdef SERIAL_LOGGING
-      Serial.println(F("In ILE Bank, process led status: "));
-      Serial.println(group2LEDMask, HEX);
-      Serial.println(group3LEDMask, HEX);
-      Serial.println(group4LEDMask, HEX);
-#endif
+      logLEDStatus(group2LEDMask, group3LEDMask, group4LEDMask);
       updateLEDS();
     } else {
       bank = packet;
@@ -363,20 +340,11 @@ void sendCode(ControlCode *code) {
 }
 
 void sendEncoder(uint8_t id, int tick) {
-#ifdef SERIAL_LOGGING
-  TX_D
-  Serial.println("");
-  Serial.print(F("Rotary Encoder: "));
-  Serial.print(id);
-  Serial.print(" - ");
-  Serial.println(tick);
-  TX_EN
-  delay(10);
-#endif
   Serial.write(IENBank);
   Serial.write(keydown);
   Serial.write((byte)id);
   Serial.write((byte)tick);
+  logSendEncoder(id, tick);
 }
 
 //MARK:- IR receiver interupt handlers
@@ -390,64 +358,46 @@ void handleReceivedTinyIRData(uint16_t aAddress, uint8_t aCommand, bool isRepeat
 }
 
 void handleRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
-  needsStatusUpdate = true;
   RemoteKey input = { aAddress, aCommand, 99 };
-  if (equals(input, switchEncoder) && !isRepeat)  {
-    int next = selectedEncoder + 1;
-    selectedEncoder = next <= 3 ? next : 0;
-#ifdef SERIAL_LOGGING
-    TX_D
-    Serial.println(selectedEncoder);
-    TX_EN
-#endif
-    updateLEDS();
-    return;
-  } else if (equals(input, switchEncoder)) {
-#ifdef SERIAL_LOGGING
-    TX_D
-    Serial.println(F("switch encoder repeat - ignoring"));
-    TX_EN
-#endif
-    return;
-  } else if (equals(input, encoderUp)) {
-    sendEncoder(selectedEncoder, TICK_RATE);
-    return;
-  } else if (equals(input, encoderDown)) {
-    sendEncoder(selectedEncoder, -TICK_RATE);
-    return;
-  }
 
   int x = sizeof(commands) / sizeof(Command);
   for (int i = 0; i < x; i++) {
     RemoteKey k = eeprom[i];
     if (equals(k, input)) {
       ControlCode *toSend = (ControlCode*)&commands[i].cmd;
-      if (!isRepeat || commands[i].repeats) { //remotes set isRepeat when holding down a button
+      if (toSend->group == ENCODER_GROUP) {
+        handleRotaryEncoderCommand(toSend, isRepeat);
+      } else if (!isRepeat || commands[i].repeats) { //remotes set isRepeat when holding down a button
         commandBuffer.push(toSend);
-#ifdef SERIAL_LOGGING
-        TX_D
-        char buffer[20];
-        strcpy_P(buffer, (char*)pgm_read_word(&(names[i])));
-        Serial.println("\nWill send command: ");
-        Serial.print("0x");
-        Serial.print(toSend->code, HEX);
-        Serial.print("(");
-        Serial.print(buffer);
-        Serial.println(")");
-        TX_EN
-#endif
+        logCommand(toSend, i);
       }
       return;
     }
   }
-#ifdef SERIAL_LOGGING
-  TX_D
-  Serial.print("\nunknown key: ");
-  Serial.print(aAddress, HEX);
-  Serial.print(" ");
-  Serial.println(aCommand, HEX);
-  TX_EN
-#endif
+  logUnknownKey(aAddress, aCommand);
+}
+
+void handleRotaryEncoderCommand(ControlCode *toSend, bool repeating) {
+  logSendEncoder(toSend->group, toSend->code);
+  if (toSend->code == 0) {
+    //Change selected rotary encoder
+      if (repeating) {
+        return;
+      }
+      needsStatusUpdate = true;
+      int next = selectedEncoder + 1;
+      selectedEncoder = next <= 3 ? next : 0;
+      updateLEDS();
+      Serial.println("switch enc");
+  } else if (toSend->code == 1) {
+    //Send positive tick for selected encoder
+      Serial.println("enc 1");
+      sendEncoder(selectedEncoder, TICK_RATE);
+  } else if (toSend->code == 2) {
+    //Send negative tick for selected encoder
+      Serial.println("enc 2");
+      sendEncoder(selectedEncoder, -TICK_RATE);
+  }
 }
 
 //MARK:- Learn remote control
@@ -563,11 +513,6 @@ void learnRemoteCommand(uint16_t aAddress, uint8_t aCommand, bool isRepeat) {
   }
 }
 
-void sendRotaryUpdate() {
-
-  return;
-}
-
 //MARK:- Helpers
 enum encoder nextEncoder() {
   switch (selectedEncoder) {
@@ -612,6 +557,7 @@ void setLowPowerMode(bool enable) {
     u8x8.setPowerSave(0);
     displaySleep = false;
     needsStatusUpdate = true;
+    updateLEDS();
   }
 }
 
@@ -629,16 +575,4 @@ void erase(void)
 {
   for (int i = 0 ; i < EEPROM.length() ; i++)
     EEPROM.write(i, 0);
-}
-
-// handle diagnostic informations given by assertion and abort program execution:
-void __assert(const char *__func, const char *__file, int __lineno, const char *__sexp) {
-  // transmit diagnostic informations through serial link.
-  Serial.println(__func);
-  Serial.println(__file);
-  Serial.println(__lineno, DEC);
-  Serial.println(__sexp);
-  Serial.flush();
-  // abort program execution.
-  abort();
 }

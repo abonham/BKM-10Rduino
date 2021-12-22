@@ -1,10 +1,12 @@
 #include <Arduino.h>
 
-#define COMMANDS_SIZE 32
+#define COMMANDS_SIZE 35
 #define IR_INPUT_PIN        7
 #define TX_ENABLE_PIN       3
 #define RX_ENABLE_LOW_PIN   2
 #define LEARN_ENABLE_PIN    4
+
+#define TICK_RATE 100
 
 #include "TinyIRReceiver.hpp"
 #include <EEPROM.h>
@@ -71,10 +73,6 @@ struct ControlCode {
 
 enum encoder { CONTRAST = CONTRAST_ENCODER, BRIGHTNESS = BRIGHT_ENCODER, CHROMA = CHROMA_ENCODER, PHASE = PHASE_ENCODER };
 
-struct RotaryEncoder {
-  byte encoderId;
-};
-
 struct Command {
   struct ControlCode cmd;
   bool repeats;
@@ -113,6 +111,9 @@ const char chroma[] PROGMEM = "Chroma manual";
 const char bright[] PROGMEM = "Brigtness manual";
 const char contrast[] PROGMEM = "Contrast manual";
 const char degauss[] PROGMEM = "Degauss";
+const char encoderSwitch[] PROGMEM = "Next rotary";
+const char encoderUp[] PROGMEM = "Rotary up";
+const char encoderDown[] PROGMEM = "Rotary down";
 
 const char * const names[] PROGMEM = {
   power,
@@ -147,6 +148,9 @@ const char * const names[] PROGMEM = {
   bright,
   contrast,
   degauss,
+  encoderSwitch,
+  encoderUp,
+  encoderDown,
 };
 
 #define BKM_POWER     { 0x01, 0x10 }
@@ -205,6 +209,12 @@ const char * const names[] PROGMEM = {
 #define LED_F3 0x08
 #define LED_SAFE_AREA 0x10
 
+#define ENCODER_GROUP 0x05 //arbitrary new group for rotary encoders
+
+#define IEN_SWITCH { ENCODER_GROUP, 0x00 }
+#define IEN_UP { ENCODER_GROUP, 0x01 }
+#define IEN_DOWN { ENCODER_GROUP, 0x02 }
+
 enum selectedBank {ISW, ILE, IEN, IMT, ICC, DATA, none};
 enum serialState {BANK, KEYDOWN, GROUP, MASK};
 
@@ -241,11 +251,10 @@ const struct Command commands[] = {
   { BKM_BRIGHT, false, 29 },
   { BKM_CONTRAST, false, 30 },
   { BKM_DEGAUSS, false, 31 },
+  { IEN_SWITCH, true, 32 },
+  { IEN_UP, true, 33 },
+  { IEN_DOWN, true, 34 },
 };
-
-RemoteKey switchEncoder = { 0x19D2, 0x84, 32 };
-RemoteKey encoderUp = { 0x19D2, 0x82, 33 };
-RemoteKey encoderDown = { 0x19D2, 0x83, 34 };
 
 /*** Thank you to the anonymous pastebin hero responsible for providing the control codes ***/
 
