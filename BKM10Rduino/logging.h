@@ -1,3 +1,8 @@
+#ifndef __LOGGING_H
+#define __LOGGING_H
+
+#include "BKM10Rduino.h"
+
 #ifdef SERIAL_LOGGING
 #define TX_EN digitalWrite(TX_ENABLE_PIN, HIGH);
 #define TX_D digitalWrite(TX_ENABLE_PIN, LOW);
@@ -84,3 +89,5 @@ void __assert(const char *__func, const char *__file, int __lineno, const char *
   // abort program execution.
   abort();
 }
+
+#endif

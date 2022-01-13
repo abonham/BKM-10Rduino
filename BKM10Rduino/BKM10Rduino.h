@@ -1,3 +1,6 @@
+#ifndef __BKM_H
+#define __BKM_H
+
 #include <Arduino.h>
 
 #define COMMANDS_SIZE 35
@@ -405,3 +408,4 @@ const struct Command commands[] = {
 
   Nobody cares.
 */
+#endif

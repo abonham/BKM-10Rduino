@@ -14,11 +14,11 @@
 #define FULL_DUPLEX
 
 #include "BKM10Rduino.h"
-#include <CircularBuffer.h>
+#include "CircularBuffer.h"
+CircularBuffer<void*, 4> commandBuffer;
 
 #include <assert.h>
 
-CircularBuffer<void*, 4> commandBuffer;
 
 #ifdef USE_PHYSICAL_BUTTONS
 int buttonState = 0;
@@ -27,10 +27,10 @@ int buttonState = 0;
 bool learning = false;
 bool isHoldingLearnButton = false;
 int learnIndex = 0;
-struct RemoteKey *learningInput = malloc(sizeof(RemoteKey));
-struct RemoteKey *lastLearnedInput = malloc(sizeof(RemoteKey));
+struct RemoteKey *learningInput = (RemoteKey*)malloc(sizeof(RemoteKey));
+struct RemoteKey *lastLearnedInput = (RemoteKey*)malloc(sizeof(RemoteKey));
 
-struct Timers * timers = malloc(sizeof(Timers));
+struct Timers * timers = (Timers*)malloc(sizeof(Timers));
 bool displaySleep = false;
 bool rs485sleep = false;
 

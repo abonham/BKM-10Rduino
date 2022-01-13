@@ -34,11 +34,11 @@ volatile int buttonState = 0;
 
 volatile bool learning = false;
 volatile bool isHoldingLearnButton = false;
-volatile int learnIndex = 0;
-struct RemoteKey *learningInput = malloc(sizeof(RemoteKey));
-struct RemoteKey *lastLearnedInput = malloc(sizeof(RemoteKey));
+volatile uint8_t learnIndex = 0;
+struct RemoteKey *learningInput = (RemoteKey*)malloc(sizeof(RemoteKey));
+struct RemoteKey *lastLearnedInput = (RemoteKey*)malloc(sizeof(RemoteKey));
 
-struct Timers * timers = malloc(sizeof(Timers));
+struct Timers * timers = (Timers*)malloc(sizeof(Timers));
 volatile bool displaySleep = false;
 volatile bool rs485sleep = false;
 volatile uint16_t leds = 0;
@@ -63,6 +63,7 @@ U8X8_SH1106_128X64_NONAME_4W_SW_SPI u8x8(13, 11, /* cs=*/ 9, /* dc=*/ 10, /* res
 
 void setup() {
   pinMode(LEARN_ENABLE_PIN, INPUT_PULLUP);
+  digitalWrite(LED_BUILTIN, HIGH);
 
   u8x8.begin();
   u8x8.setPowerSave(0);
@@ -79,7 +80,7 @@ void setup() {
   if (!checkROMInit()) {
     erase();
     for (int i = 0; i < COMMANDS_SIZE; i++) {
-      RemoteKey k = {i, i, i};
+      RemoteKey k = {(uint16_t)i, (uint8_t)i, (uint8_t)i};
       EEPROM.put(i * sizeof(RemoteKey), k);
     }
     setROMInitFlag(true);
@@ -109,9 +110,9 @@ void setup() {
   timers->lastInput = millis();
 
 #ifdef SERIAL_LOGGING
-//  TX_D
-//  dumpEEPROM();
-//  TX_EN
+  //  TX_D
+  //  dumpEEPROM();
+  //  TX_EN
 #endif
   u8x8.clear();
   updateLEDS();
@@ -184,31 +185,35 @@ void displayLearningMessage() {
   u8x8.setInverseFont(0);
 }
 
-int checkBank(byte* b) {
-  logCheckBank(b);
+enum selectedBank checkBank(byte* b) {
+  //  logCheckBank(b);
 
-  if (strcmp(b, "ILE") == 0) {
+  if (strcmp((char*)b, "ILE") == 0) {
     return ILE;
   }
-  else if (strcmp(b, "ISW") == 0) {
+
+  if (strcmp((char*)b, "ISW") == 0) {
     return ISW;
   }
-  else if (strcmp(b, "IMT") == 0) {
+
+  if (strcmp((char*)b, "IMT") == 0) {
     return IMT;
   }
-  else if (strcmp(b, "IEN") == 0) {
+
+  if (strcmp((char*)b, "IEN") == 0) {
     return IEN;
   }
-  else if (strcmp(b, "ICC") == 0) {
+
+  if (strcmp((char*)b, "ICC") == 0) {
     return ICC;
   }
-  else if ((unsigned char)b[0] == 0x44) {
-    logGroupMask(b);
+
+  if ((unsigned char)b[0] == 0x44) {
+    //    logGroupMask(b);
     return DATA;
   }
-  else {
-    return none;
-  }
+
+  return none;
 }
 
 //MARK:- BKM-10R TX/RX methods
@@ -381,22 +386,22 @@ void handleRotaryEncoderCommand(ControlCode *toSend, bool repeating) {
   logSendEncoder(toSend->group, toSend->code);
   if (toSend->code == 0) {
     //Change selected rotary encoder
-      if (repeating) {
-        return;
-      }
-      needsStatusUpdate = true;
-      int next = selectedEncoder + 1;
-      selectedEncoder = next <= 3 ? next : 0;
-      updateLEDS();
-      Serial.println("switch enc");
+    if (repeating) {
+      return;
+    }
+    needsStatusUpdate = true;
+    int next = selectedEncoder + 1;
+    selectedEncoder = next <= 3 ? next : 0;
+    updateLEDS();
+    Serial.println("switch enc");
   } else if (toSend->code == 1) {
     //Send positive tick for selected encoder
-      Serial.println("enc 1");
-      sendEncoder(selectedEncoder, TICK_RATE);
+    Serial.println("enc 1");
+    sendEncoder(selectedEncoder, TICK_RATE);
   } else if (toSend->code == 2) {
     //Send negative tick for selected encoder
-      Serial.println("enc 2");
-      sendEncoder(selectedEncoder, -TICK_RATE);
+    Serial.println("enc 2");
+    sendEncoder(selectedEncoder, -TICK_RATE);
   }
 }
 
@@ -524,6 +529,8 @@ enum encoder nextEncoder() {
         return PHASE;
       case PHASE:
         return CONTRAST;
+      default:
+        return PHASE;
     }
   }
 
@@ -535,7 +542,9 @@ void dumpNames() {
   int s = sizeof(commands) / sizeof(Command);
   for (int i = 0; i < s; i++) {
     char buffer[20];
+    #pragma warning disable
     strcpy_P(buffer, (char*)pgm_read_word(&(names[i])));
+    #pragma warning restore
     Serial.println(buffer);
   }
 }

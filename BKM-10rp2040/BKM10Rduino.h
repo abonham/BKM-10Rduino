@@ -5,8 +5,10 @@
 #define TX_ENABLE_PIN       3
 #define RX_ENABLE_LOW_PIN   2
 #define LEARN_ENABLE_PIN    4
-
+//#define ARDUINO_ARCH_MBED
 #include "TinyIRReceiver.hpp"
+//#define DECODE_NEC
+//#include <IRremote.hpp>
 #include <U8g2lib.h>
 
 #ifdef U8X8_HAVE_HW_SPI
