@@ -14,7 +14,7 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 $Comp
-L bkm10:ADM3063EARZ-ND U1
+L BKM-10Rp2040-rescue:ADM3063EARZ-ND-bkm10 U1
 U 1 1 61A57B66
 P 3650 3150
 F 0 "U1" H 3675 3165 50  0000 C CNN
@@ -55,17 +55,6 @@ F 1 "TSOP335xx" H 4088 2234 50  0000 C CNN
 F 2 "OptoDevice:Vishay_MINIMOLD-3Pin" H 4050 1525 50  0001 C CNN
 F 3 "http://www.vishay.com/docs/82742/tsop331.pdf" H 4750 2200 50  0001 C CNN
 	1    4100 1900
-	1    0    0    -1  
-$EndComp
-$Comp
-L Device:R_Small R1
-U 1 1 61A5F752
-P 4450 3600
-F 0 "R1" H 4509 3646 50  0000 L CNN
-F 1 "60R" H 4509 3555 50  0000 L CNN
-F 2 "Resistor_SMD:R_1206_3216Metric_Pad1.30x1.75mm_HandSolder" H 4450 3600 50  0001 C CNN
-F 3 "~" H 4450 3600 50  0001 C CNN
-	1    4450 3600
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -204,7 +193,7 @@ U 1 1 61A664B7
 P 4100 3150
 F 0 "C4" H 4008 3104 50  0000 R CNN
 F 1 "0.1uF" H 4008 3195 50  0000 R CNN
-F 2 "Capacitor_SMD:C_1210_3225Metric_Pad1.33x2.70mm_HandSolder" H 4100 3150 50  0001 C CNN
+F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder" H 4100 3150 50  0001 C CNN
 F 3 "~" H 4100 3150 50  0001 C CNN
 	1    4100 3150
 	-1   0    0    1   
@@ -270,7 +259,7 @@ U 1 1 61A6A7BF
 P 4700 1900
 F 0 "C2" H 4608 1854 50  0000 R CNN
 F 1 "0.1uF" H 4608 1945 50  0000 R CNN
-F 2 "Capacitor_SMD:C_1210_3225Metric_Pad1.33x2.70mm_HandSolder" H 4700 1900 50  0001 C CNN
+F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder" H 4700 1900 50  0001 C CNN
 F 3 "~" H 4700 1900 50  0001 C CNN
 	1    4700 1900
 	-1   0    0    1   
@@ -288,17 +277,6 @@ Connection ~ 4700 2100
 Text GLabel 4500 1900 2    50   Output ~ 0
 IR
 $Comp
-L Device:C_Small C3
-U 1 1 61A6CD1E
-P 7550 2650
-F 0 "C3" H 7642 2696 50  0000 L CNN
-F 1 "1uF" H 7642 2605 50  0000 L CNN
-F 2 "Capacitor_SMD:C_1210_3225Metric_Pad1.33x2.70mm_HandSolder" H 7550 2650 50  0001 C CNN
-F 3 "~" H 7550 2650 50  0001 C CNN
-	1    7550 2650
-	1    0    0    -1  
-$EndComp
-$Comp
 L power:GND #PWR07
 U 1 1 61A628DF
 P 7550 2750
@@ -315,22 +293,20 @@ Wire Wire Line
 	7350 2600 7350 2550
 Wire Wire Line
 	7350 2550 7550 2550
-Connection ~ 7550 2550
 Wire Wire Line
 	7100 2700 7350 2700
 Wire Wire Line
 	7350 2700 7350 2750
 Wire Wire Line
 	7350 2750 7550 2750
-Connection ~ 7550 2750
-Text GLabel 4650 3650 2    50   Output ~ 0
-TXD-
-Text GLabel 4650 3550 2    50   Output ~ 0
-TXD+
-Text GLabel 4450 3900 2    50   Input ~ 0
-RXD+
-Text GLabel 4450 3800 2    50   Input ~ 0
+Text GLabel 4650 3650 2    50   Input ~ 0
 RXD-
+Text GLabel 4650 3550 2    50   Input ~ 0
+RXD+
+Text GLabel 4450 3900 2    50   Output ~ 0
+TXD+
+Text GLabel 4450 3800 2    50   Output ~ 0
+TXD-
 Text GLabel 3250 3800 0    50   Input ~ 0
 TX
 Text GLabel 3250 3700 0    50   Input ~ 0
@@ -396,23 +372,13 @@ Wire Wire Line
 Wire Wire Line
 	4600 3650 4600 3700
 Wire Wire Line
-	4600 3700 4450 3700
-Wire Wire Line
 	4650 3550 4600 3550
 Wire Wire Line
 	4600 3550 4600 3500
 Wire Wire Line
-	4600 3500 4450 3500
-Wire Wire Line
-	4450 3500 4400 3500
-Wire Wire Line
 	4400 3500 4400 3600
 Wire Wire Line
 	4400 3600 4100 3600
-Connection ~ 4450 3500
-Wire Wire Line
-	4100 3700 4450 3700
-Connection ~ 4450 3700
 Wire Wire Line
 	4100 3250 4100 3400
 Connection ~ 4100 3500
@@ -504,4 +470,8 @@ F 3 "" H 2450 3250 50  0001 C CNN
 	1    2450 3250
 	1    0    0    -1  
 $EndComp
+Wire Wire Line
+	4400 3500 4600 3500
+Wire Wire Line
+	4100 3700 4600 3700
 $EndSCHEMATC
