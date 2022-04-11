@@ -1,9 +1,0 @@
-EESchema-DOCLIB  Version 2.0
-#
-$CMP SW_MEC_5E_copy
-D MEC 5E single pole normally-open tactile switch
-K switch normally-open pushbutton push-button
-F http://www.apem.com/int/index.php?controller=attachment&id_attachment=1371
-$ENDCMP
-#
-#End Doc Library
